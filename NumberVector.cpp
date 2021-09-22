@@ -48,7 +48,7 @@ bool NumberVector::operator==(const NumberVector& other) const {
     return m_numberBits == other.m_numberBits;
 }
 
-bool NumberVector::hasOneToNine() const {
+bool NumberVector::hasOneThroughNine() const {
     if (m_numberBits == 0x1ff) {
         assert(count() == 9);
         return true;

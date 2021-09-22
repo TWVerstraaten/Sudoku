@@ -27,7 +27,7 @@ class NumberVector {
 
     unsigned short firstMissing() const;
 
-    bool hasOneToNine() const;
+    bool hasOneThroughNine() const;
 
     bool operator==(const NumberVector& other) const;
 

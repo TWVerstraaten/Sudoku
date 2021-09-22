@@ -77,7 +77,7 @@ bool Sudoku::solve() {
         for (unsigned short column = 0; column != 9; ++column) {
             if (isFree(row, column)) {
                 const NumberVector v = ruledOutAt(row, column);
-                if (v.hasOneToNine()) {
+                if (v.hasOneThroughNine()) {
                     return false;
                 } else if (v.missing() < minMissing) {
                     minMissing   = v.missing();
@@ -95,6 +95,21 @@ bool Sudoku::solve() {
     } else {
         return tryPossibilitiesAtPosition(numberVector, minRow, minColumn);
     }
+}
+
+bool Sudoku::tryPossibilitiesAtPositionUsingCopy(const NumberVector& numberVector, unsigned short row, unsigned short column) {
+    assert(isFree(row, column));
+    for (unsigned short i = 1; i != 10; ++i) {
+        if (not numberVector.isSet(i)) {
+            Sudoku s = *this;
+            s.set(row, column, i);
+            if (s.solve()) {
+                m_rows = s.m_rows;
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 bool Sudoku::tryPossibilitiesAtPosition(const NumberVector& numberVector, unsigned short row, unsigned short column) {
@@ -155,6 +170,17 @@ Sudoku Sudoku::preset(size_t index) {
                           ".6....28."
                           "...419..5"
                           "....8..79"};
+        case 2:
+            return Sudoku{"........."
+                          "........."
+                          "........."
+                          "........."
+                          "........."
+                          "........."
+                          "........."
+                          "........."
+                          "........."};
+
         default:
             exit(1);
     }

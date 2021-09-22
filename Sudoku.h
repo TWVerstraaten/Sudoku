@@ -31,6 +31,8 @@ class Sudoku {
 
     bool trySingleAtPosition(unsigned short onlyPossible, unsigned short row, unsigned short column);
 
+    bool tryPossibilitiesAtPositionUsingCopy(const NumberVector& numberVector, unsigned short row, unsigned short column);
+
     void set(unsigned short row, unsigned short column, unsigned short value);
 
     bool isFree(unsigned short row, unsigned short column) const;
