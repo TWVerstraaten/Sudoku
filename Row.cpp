@@ -17,7 +17,6 @@ Row::Row(const std::string& string) : m_entries(0ul) {
         if (c != '.') {
             assert(isdigit(c));
             m_entries |= multiplier * (c - '0');
-            m_numbersInRow.set(c - '0');
         }
         multiplier <<= BITS_PER_NUMBER;
     }
@@ -28,22 +27,14 @@ unsigned short Row::numberAt(unsigned short index) const {
     return (m_entries >> (BITS_PER_NUMBER * index)) & NUMBER_BIT_MASK;
 }
 
-const NumberVector& Row::numbersInRow() const {
-    return m_numbersInRow;
-}
-
 void Row::set(size_t index, size_t value) {
     assert(index < 9);
-    if (m_numbersInRow.isSet(numberAt(index))) {
-        m_numbersInRow.unSet(numberAt(index));
-        m_entries &= ~(NUMBER_BIT_MASK << (BITS_PER_NUMBER * index));
-    }
+    m_entries &= ~(NUMBER_BIT_MASK << (BITS_PER_NUMBER * index));
     if (value != 0) {
         m_entries |= value << (BITS_PER_NUMBER * index);
-        m_numbersInRow.set(value);
     }
 }
 
 bool Row::operator==(const Row& other) const {
-    return m_entries == other.m_entries && m_numbersInRow == other.m_numbersInRow;
+    return m_entries == other.m_entries;
 }

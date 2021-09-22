@@ -18,15 +18,12 @@ class Row {
 
     unsigned short numberAt(unsigned short index) const;
 
-    const NumberVector& numbersInRow() const;
-
     void set(size_t index, size_t value);
 
     bool operator==(const Row& other) const;
 
   private:
-    size_t       m_entries = 0ul;
-    NumberVector m_numbersInRow;
+    size_t m_entries = 0ul;
 };
 
 #endif //_ROW_H

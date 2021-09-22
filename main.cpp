@@ -5,10 +5,10 @@
 #include <iostream>
 
 int main() {
-    size_t N     = 450;
+    size_t N     = 15;
     size_t total = 0;
     for (size_t dummy = 0; dummy != N; ++dummy) {
-        Sudoku sudoku = Sudoku::preset(0);
+        Sudoku sudoku = Sudoku::preset(1);
         auto   start  = std::chrono::high_resolution_clock::now();
         std::cout << (sudoku.solve()) << "\n";
         auto stop     = std::chrono::high_resolution_clock::now();

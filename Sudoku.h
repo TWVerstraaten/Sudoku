@@ -30,7 +30,7 @@ class Sudoku {
 
     void set(unsigned short row, unsigned short column, unsigned short value);
 
-    bool tryPossibilitiesAtPosition(const NumberVector& numberVector, unsigned short row, unsigned short column);
+    size_t tryPossibilitiesAtPosition(const NumberVector& numberVector, unsigned short row, unsigned short column);
 
     bool trySingleAtPosition(unsigned short onlyPossible, unsigned short row, unsigned short column);
 
@@ -40,6 +40,8 @@ class Sudoku {
 
     NumberVector numbersInColumn(unsigned short column) const;
 
+    NumberVector numbersInRow(unsigned short row) const;
+
     NumberVector numbersInBlock(unsigned short block) const;
 
     NumberVector ruledOutAt(unsigned short row, unsigned short column) const;
@@ -47,6 +49,7 @@ class Sudoku {
     std::array<Row, 9>          m_rows{};
     std::array<NumberVector, 9> m_numbersInColumns;
     std::array<NumberVector, 9> m_numbersInBlocks;
+    std::array<NumberVector, 9> m_numbersInRows;
 };
 
 #endif //_SUDOKU_H
