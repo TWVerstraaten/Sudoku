@@ -5,8 +5,15 @@
 #ifndef _NUMBERVECTOR_H
 #define _NUMBERVECTOR_H
 
+//#define NUMBER_VECTOR_USING_BITSET
+
+#include <limits>
 #include <string>
 #include <vector>
+
+#ifdef NUMBER_VECTOR_USING_BITSET
+#include <bitset>
+#endif
 
 class NumberVector {
 
@@ -32,7 +39,11 @@ class NumberVector {
     bool operator==(const NumberVector& other) const;
 
   private:
-    unsigned short m_numberBits = 0;
+#ifdef NUMBER_VECTOR_USING_BITSET
+    std::bitset<10> m_numberBits;
+#else
+    int64_t m_numberBits = 0;
+#endif
 };
 
 #endif //_NUMBERVECTOR_H

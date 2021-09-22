@@ -7,10 +7,7 @@
 
 #include "NumberVector.h"
 
-#include <cstddef>
-#include <set>
 #include <string>
-#include <vector>
 
 class Row {
 
@@ -28,7 +25,7 @@ class Row {
     bool operator==(const Row& other) const;
 
   private:
-    size_t       m_concatenated = 0ul;
+    size_t       m_entries = 0ul;
     NumberVector m_numbersInRow;
 };
 

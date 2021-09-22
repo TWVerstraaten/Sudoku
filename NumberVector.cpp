@@ -27,7 +27,11 @@ void NumberVector::unSet(size_t index) {
 
 bool NumberVector::isSet(size_t index) const {
     assert(index <= 9);
+#ifdef NUMBER_VECTOR_USING_BITSET
+    return m_numberBits[index];
+#else
     return m_numberBits & (1 << index);
+#endif
 }
 
 unsigned short NumberVector::count() const {
