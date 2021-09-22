@@ -5,6 +5,7 @@
 #include "NumberVector.h"
 
 #include <cassert>
+#include <sstream>
 
 NumberVector NumberVector::operator|=(const NumberVector& other) {
     m_numberBits |= other.m_numberBits;
@@ -68,4 +69,14 @@ unsigned short NumberVector::firstMissing() const {
         }
     }
     assert(false);
+}
+
+std::string NumberVector::toString() const {
+    std::stringstream ss;
+    for (size_t i = 1; i != 10; ++i) {
+        if (isSet(i)) {
+            ss << i << " ";
+        }
+    }
+    return ss.str();
 }

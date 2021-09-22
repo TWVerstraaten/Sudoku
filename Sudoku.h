@@ -19,7 +19,7 @@ class Sudoku {
 
     static Sudoku preset(size_t index);
 
-    bool solve();
+    size_t solve();
 
     std::string toString() const;
 
@@ -38,13 +38,15 @@ class Sudoku {
 
     bool isFree(unsigned short row, unsigned short column) const;
 
-    NumberVector numbersInColumn(unsigned short index) const;
+    NumberVector numbersInColumn(unsigned short column) const;
 
-    NumberVector numbersInBlock(unsigned short index) const;
+    NumberVector numbersInBlock(unsigned short block) const;
 
     NumberVector ruledOutAt(unsigned short row, unsigned short column) const;
 
-    std::array<Row, 9> m_rows{};
+    std::array<Row, 9>          m_rows{};
+    std::array<NumberVector, 9> m_numbersInColumns;
+    std::array<NumberVector, 9> m_numbersInBlocks;
 };
 
 #endif //_SUDOKU_H

@@ -5,6 +5,7 @@
 #include "Sudoku.h"
 
 #include <cassert>
+#include <iostream>
 #include <limits>
 #include <sstream>
 
@@ -12,6 +13,12 @@ Sudoku::Sudoku(const std::string& string) {
     assert(string.length() == 81);
     for (unsigned short i = 0; i != 9; ++i) {
         m_rows[i] = Row(string.substr(9 * i, 9));
+    }
+    for (size_t column = 0; column != 9; ++column) {
+        for (size_t row = 0; row != 9; ++row) {
+            m_numbersInColumns[column].set(m_rows[row].numberAt(column));
+            m_numbersInBlocks[indicesToBlock(row, column)].set(m_rows[row].numberAt(column));
+        }
     }
 }
 
@@ -31,24 +38,12 @@ std::string Sudoku::toString() const {
     return ss.str();
 }
 
-NumberVector Sudoku::numbersInColumn(unsigned short index) const {
-    NumberVector result;
-    for (const auto& row : m_rows) {
-        result.set(row.numberAt(index));
-    }
-    return result;
+NumberVector Sudoku::numbersInColumn(unsigned short column) const {
+    return m_numbersInColumns[column];
 }
 
-NumberVector Sudoku::numbersInBlock(unsigned short index) const {
-    unsigned short startRow    = (index / 3) * 3;
-    unsigned short startColumn = 3 * (index % 3);
-    NumberVector   result;
-    for (unsigned short i = 0; i != 3; ++i) {
-        for (unsigned short j = 0; j != 3; ++j) {
-            result.set(m_rows[startRow + i].numberAt(startColumn + j));
-        }
-    }
-    return result;
+NumberVector Sudoku::numbersInBlock(unsigned short block) const {
+    return m_numbersInBlocks[block];
 }
 
 unsigned short Sudoku::indicesToBlock(unsigned short row, unsigned short column) {
@@ -59,6 +54,12 @@ unsigned short Sudoku::indicesToBlock(unsigned short row, unsigned short column)
 
 void Sudoku::set(unsigned short row, unsigned short column, unsigned short value) {
     assert(row < 9);
+    if (m_rows[row].numberAt(column) != 0) {
+        m_numbersInColumns[column].unSet(m_rows[row].numberAt(column));
+        m_numbersInBlocks[indicesToBlock(row, column)].unSet(m_rows[row].numberAt(column));
+    }
+    m_numbersInColumns[column].set(value);
+    m_numbersInBlocks[indicesToBlock(row, column)].set(value);
     m_rows[row].set(column, value);
 }
 
@@ -68,7 +69,7 @@ bool Sudoku::isFree(unsigned short row, unsigned short column) const {
     return m_rows[row].numberAt(column) == 0;
 }
 
-bool Sudoku::solve() {
+size_t Sudoku::solve() {
     unsigned short minMissing = std::numeric_limits<unsigned short>::max();
     unsigned short minRow;
     unsigned short minColumn;
@@ -78,18 +79,20 @@ bool Sudoku::solve() {
             if (isFree(row, column)) {
                 const NumberVector v = ruledOutAt(row, column);
                 if (v.hasOneThroughNine()) {
-                    return false;
+                    return 0;
                 } else if (v.missing() < minMissing) {
                     minMissing   = v.missing();
                     minRow       = row;
                     minColumn    = column;
                     numberVector = v;
+                    //                    goto label;
                 }
             }
         }
     }
+    // label:
     if (minMissing == std::numeric_limits<unsigned short>::max()) {
-        return true;
+        return 1ul;
     } else if (minMissing == 1) {
         return trySingleAtPosition(numberVector.firstMissing(), minRow, minColumn);
     } else {
@@ -114,26 +117,23 @@ bool Sudoku::tryPossibilitiesAtPositionUsingCopy(const NumberVector& numberVecto
 
 bool Sudoku::tryPossibilitiesAtPosition(const NumberVector& numberVector, unsigned short row, unsigned short column) {
     assert(isFree(row, column));
+    size_t count = 0;
     for (unsigned short i = 1; i != 10; ++i) {
         if (not numberVector.isSet(i)) {
             set(row, column, i);
-            if (solve()) {
-                return true;
-            }
+            count += solve();
         }
     }
     set(row, column, 0);
-    return false;
+    return count;
 }
 
 bool Sudoku::trySingleAtPosition(unsigned short onlyPossible, unsigned short row, unsigned short column) {
     assert(isFree(row, column));
     set(row, column, onlyPossible);
-    if (solve()) {
-        return true;
-    }
+    size_t count = solve();
     set(row, column, 0);
-    return false;
+    return count;
 }
 
 NumberVector Sudoku::ruledOutAt(unsigned short row, unsigned short column) const {
@@ -171,7 +171,7 @@ Sudoku Sudoku::preset(size_t index) {
                           "...419..5"
                           "....8..79"};
         case 2:
-            return Sudoku{"........."
+            return Sudoku{"123456789"
                           "........."
                           "........."
                           "........."

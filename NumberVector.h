@@ -38,6 +38,8 @@ class NumberVector {
 
     bool operator==(const NumberVector& other) const;
 
+    std::string toString() const;
+
   private:
 #ifdef NUMBER_VECTOR_USING_BITSET
     std::bitset<10> m_numberBits;
