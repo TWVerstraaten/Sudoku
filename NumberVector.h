@@ -22,17 +22,19 @@ class NumberVector {
 
     NumberVector operator|=(const NumberVector& other);
 
-    void set(size_t index);
+    void add(size_t number);
 
-    void unSet(size_t index);
+    void remove(size_t number);
 
-    bool isSet(size_t index) const;
+    bool contains(size_t number) const;
 
     unsigned short count() const;
 
     unsigned short missing() const;
 
-    unsigned short firstMissing() const;
+    unsigned short smallestMissing() const;
+
+    unsigned short largestMissing() const;
 
     bool hasOneThroughNine() const;
 
@@ -40,11 +42,13 @@ class NumberVector {
 
     std::string toString() const;
 
+    static void INIT_ARRAYS();
+
   private:
 #ifdef NUMBER_VECTOR_USING_BITSET
     std::bitset<10> m_numberBits;
 #else
-    int64_t m_numberBits = 0;
+    size_t m_numberBits = 0;
 #endif
 };
 

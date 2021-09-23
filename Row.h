@@ -16,9 +16,9 @@ class Row {
 
     explicit Row(const std::string& string);
 
-    unsigned short numberAt(unsigned short index) const;
+    unsigned short numberAt(unsigned short column) const;
 
-    void set(size_t index, size_t value);
+    void set(size_t column, size_t value);
 
     bool operator==(const Row& other) const;
 

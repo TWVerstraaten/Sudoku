@@ -10,6 +10,28 @@
 #define BITS_PER_NUMBER 4ul
 #define NUMBER_BIT_MASK 0xful
 
+static size_t SHIFT_PER_COLUMN[9] = {
+    BITS_PER_NUMBER * 0ul,
+    BITS_PER_NUMBER * 1ul,
+    BITS_PER_NUMBER * 2ul,
+    BITS_PER_NUMBER * 3ul,
+    BITS_PER_NUMBER * 4ul,
+    BITS_PER_NUMBER * 5ul,
+    BITS_PER_NUMBER * 6ul,
+    BITS_PER_NUMBER * 7ul,
+    BITS_PER_NUMBER * 8ul,
+};
+
+static size_t TOGGLE_OFF_MASK[9] = {~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[0]),
+                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[1]),
+                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[2]),
+                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[3]),
+                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[4]),
+                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[5]),
+                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[6]),
+                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[7]),
+                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[8])};
+
 Row::Row(const std::string& string) : m_entries(0ul) {
     assert(string.length() == 9);
     size_t multiplier = 1ul;
@@ -22,16 +44,16 @@ Row::Row(const std::string& string) : m_entries(0ul) {
     }
 }
 
-unsigned short Row::numberAt(unsigned short index) const {
-    assert(index < 9);
-    return (m_entries >> (BITS_PER_NUMBER * index)) & NUMBER_BIT_MASK;
+unsigned short Row::numberAt(unsigned short column) const {
+    assert(column < 9);
+    return (m_entries >> SHIFT_PER_COLUMN[column]) & NUMBER_BIT_MASK;
 }
 
-void Row::set(size_t index, size_t value) {
-    assert(index < 9);
-    m_entries &= ~(NUMBER_BIT_MASK << (BITS_PER_NUMBER * index));
+void Row::set(size_t column, size_t value) {
+    assert(column < 9);
+    m_entries &= TOGGLE_OFF_MASK[column];
     if (value != 0) {
-        m_entries |= value << (BITS_PER_NUMBER * index);
+        m_entries |= value << SHIFT_PER_COLUMN[column];
     }
 }
 
