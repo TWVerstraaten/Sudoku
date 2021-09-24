@@ -20,7 +20,15 @@ class NumberVector {
   public:
     NumberVector() = default;
 
-    NumberVector operator|=(const NumberVector& other);
+    NumberVector(unsigned short numberBits);
+
+    NumberVector& operator|=(const NumberVector& other);
+
+    friend NumberVector operator|(NumberVector lhs, const NumberVector& rhs);
+
+    friend NumberVector operator&(NumberVector lhs, const NumberVector& rhs);
+
+    NumberVector invert() const;
 
     void add(size_t number);
 
@@ -34,8 +42,6 @@ class NumberVector {
 
     unsigned short smallestMissing() const;
 
-    unsigned short largestMissing() const;
-
     bool hasOneThroughNine() const;
 
     bool operator==(const NumberVector& other) const;
@@ -48,7 +54,7 @@ class NumberVector {
 #ifdef NUMBER_VECTOR_USING_BITSET
     std::bitset<10> m_numberBits;
 #else
-    size_t m_numberBits = 0;
+    unsigned short m_numberBits = 0;
 #endif
 };
 

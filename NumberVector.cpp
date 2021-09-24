@@ -12,7 +12,6 @@ static size_t REMOVE_MASK[10] = {~ADD_MASK[0], ~ADD_MASK[1], ~ADD_MASK[2], ~ADD_
 static unsigned short COUNT_PRESENT[1ul << 10ul]    = {0};
 static unsigned short COUNT_MISSING[1ul << 10ul]    = {0};
 static unsigned short SMALLEST_MISSING[1ul << 10ul] = {0};
-static unsigned short LARGEST_MISSING[1ul << 10ul]  = {0};
 
 void NumberVector::INIT_ARRAYS() {
     for (size_t i = 0; i != 1ul << 10ul; ++i) {
@@ -32,19 +31,20 @@ void NumberVector::INIT_ARRAYS() {
             }
         }
     }
-    for (size_t i = 0; i != 1ul << 10ul; ++i) {
-        for (size_t bit = 9; bit >= 1; --bit) {
-            if (!(i & (1 << bit))) {
-                LARGEST_MISSING[i] = bit;
-                break;
-            }
-        }
-    }
 }
 
-NumberVector NumberVector::operator|=(const NumberVector& other) {
+NumberVector::NumberVector(unsigned short numberBits) : m_numberBits(numberBits) {
+}
+
+NumberVector& NumberVector::operator|=(const NumberVector& other) {
     m_numberBits |= other.m_numberBits;
     return *this;
+}
+
+NumberVector NumberVector::invert() const {
+    NumberVector result;
+    result.m_numberBits |= (~m_numberBits) & 0x3ff;
+    return result;
 }
 
 void NumberVector::add(size_t number) {
@@ -54,7 +54,6 @@ void NumberVector::add(size_t number) {
 
 void NumberVector::remove(size_t number) {
     assert(number <= 9);
-    assert(contains(number));
     m_numberBits &= REMOVE_MASK[number];
 }
 
@@ -89,12 +88,6 @@ unsigned short NumberVector::smallestMissing() const {
     return SMALLEST_MISSING[m_numberBits];
 }
 
-unsigned short NumberVector::largestMissing() const {
-    assert(not hasOneThroughNine());
-    assert(1 <= LARGEST_MISSING[m_numberBits] && LARGEST_MISSING[m_numberBits] <= 9);
-    return LARGEST_MISSING[m_numberBits];
-}
-
 std::string NumberVector::toString() const {
     std::stringstream ss;
     for (size_t i = 1; i != 10; ++i) {
@@ -103,4 +96,13 @@ std::string NumberVector::toString() const {
         }
     }
     return ss.str();
+}
+
+NumberVector operator|(NumberVector lhs, const NumberVector& rhs) {
+    lhs |= rhs;
+    return lhs;
+}
+NumberVector operator&(NumberVector lhs, const NumberVector& rhs) {
+    lhs.m_numberBits &= rhs.m_numberBits;
+    return lhs;
 }

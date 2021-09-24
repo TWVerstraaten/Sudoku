@@ -18,6 +18,8 @@ class Row {
 
     unsigned short numberAt(unsigned short column) const;
 
+    bool numberAtPositionIsSet(unsigned short column) const;
+
     void set(size_t column, size_t value);
 
     bool operator==(const Row& other) const;
