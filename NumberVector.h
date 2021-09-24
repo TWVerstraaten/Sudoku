@@ -11,10 +11,6 @@
 #include <string>
 #include <vector>
 
-#ifdef NUMBER_VECTOR_USING_BITSET
-#include <bitset>
-#endif
-
 class NumberVector {
 
   public:
@@ -36,11 +32,11 @@ class NumberVector {
 
     bool contains(size_t number) const;
 
-    unsigned short count() const;
+    unsigned char count() const;
 
-    unsigned short missing() const;
+    unsigned char missing() const;
 
-    unsigned short smallestMissing() const;
+    unsigned char smallestNumber() const;
 
     bool hasOneThroughNine() const;
 
@@ -51,11 +47,7 @@ class NumberVector {
     static void INIT_ARRAYS();
 
   private:
-#ifdef NUMBER_VECTOR_USING_BITSET
-    std::bitset<10> m_numberBits;
-#else
     unsigned short m_numberBits = 0;
-#endif
 };
 
 #endif //_NUMBERVECTOR_H

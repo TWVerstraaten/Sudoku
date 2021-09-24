@@ -5,7 +5,6 @@
 #include <fstream>
 #include <iostream>
 
-
 int main() {
     NumberVector::INIT_ARRAYS();
 
@@ -39,7 +38,7 @@ int main() {
     //    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     //    std::cout << duration.count() << "\n";
 
-    size_t N     = 200;
+    size_t N     = 500;
     size_t total = 0;
     for (size_t dummy = 0; dummy != N; ++dummy) {
         //        Sudoku sudoku = Sudoku::preset(2);

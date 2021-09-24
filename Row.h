@@ -16,9 +16,9 @@ class Row {
 
     explicit Row(const std::string& string);
 
-    unsigned short numberAt(unsigned short column) const;
+    unsigned char numberAt(unsigned char column) const;
 
-    bool numberAtPositionIsSet(unsigned short column) const;
+    bool numberAtPositionIsSet(unsigned char column) const;
 
     void set(size_t column, size_t value);
 

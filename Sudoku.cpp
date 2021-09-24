@@ -11,22 +11,26 @@
 #include <set>
 #include <sstream>
 
+static const unsigned char DIV_THREE[9] = {0, 0, 0, 3, 3, 3, 6, 6, 6};
+
 Sudoku::Sudoku(const std::string& string) {
     assert(string.length() == 81);
-    for (unsigned short i = 0; i != 9; ++i) {
+    for (unsigned char i = 0; i != 9; ++i) {
         m_rows[i] = Row(string.substr(9 * i, 9));
     }
+    std::array<NumberVector, 9> numbersInColumns;
+    std::array<NumberVector, 9> numbersInBlocks;
+    std::array<NumberVector, 9> numbersInRows;
     for (size_t row = 0; row != 9; ++row) {
         for (size_t column = 0; column != 9; ++column) {
-            m_numbersInColumns[column].add(m_rows[row].numberAt(column));
-            m_numbersInBlocks[indicesToBlock(row, column)].add(m_rows[row].numberAt(column));
-            m_numbersInRows[row].add(m_rows[row].numberAt(column));
+            numbersInColumns[column].add(m_rows[row].numberAt(column));
+            numbersInBlocks[indicesToBlock(row, column)].add(m_rows[row].numberAt(column));
+            numbersInRows[row].add(m_rows[row].numberAt(column));
         }
     }
     for (size_t row = 0; row != 9; ++row) {
         for (size_t column = 0; column != 9; ++column) {
-            m_possibleAtPosition[row][column] = ruledOutAt(row, column).invert();
-            m_sortedPossible[m_possibleAtPosition[row][column].count()].push_back({row, column});
+            m_possibleAtPosition[row][column] = (numbersInColumns[column] | numbersInRows[row] | numbersInBlocks[indicesToBlock(row, column)]).invert();
         }
     }
 }
@@ -34,8 +38,8 @@ Sudoku::Sudoku(const std::string& string) {
 std::string Sudoku::toString() const {
     std::stringstream ss;
     for (const auto& row : m_rows) {
-        for (unsigned short j = 0; j != 9; ++j) {
-            unsigned short value = row.numberAt(j);
+        for (unsigned char j = 0; j != 9; ++j) {
+            unsigned char value = row.numberAt(j);
             if (value == 0) {
                 ss << ".";
             } else {
@@ -47,63 +51,61 @@ std::string Sudoku::toString() const {
     return ss.str();
 }
 
-NumberVector Sudoku::numbersInColumn(unsigned short column) const {
-    return m_numbersInColumns[column];
-}
-
-NumberVector Sudoku::numbersInRow(unsigned short row) const {
-    return m_numbersInRows[row];
-}
-
-NumberVector Sudoku::numbersInBlock(unsigned short block) const {
-    return m_numbersInBlocks[block];
-}
-
-unsigned short Sudoku::indicesToBlock(unsigned short row, unsigned short column) {
+unsigned char Sudoku::indicesToBlock(unsigned char row, unsigned char column) {
     assert(row < 9);
     assert(column < 9);
-    return (row / 3) * 3 + (column / 3);
+    return DIV_THREE[row] + column / 3;
 }
 
-void Sudoku::set(unsigned short row, unsigned short column, unsigned short value) {
+void Sudoku::set(unsigned char row, unsigned char column, unsigned char value) {
     assert(row < 9);
-    m_numbersInColumns[column].add(value);
-    m_numbersInBlocks[indicesToBlock(row, column)].add(value);
-    m_numbersInRows[row].add(value);
-
     auto& m_possibleAtRow = m_possibleAtPosition[row];
-    for (unsigned short index = 0; index != 9; ++index) {
-        m_possibleAtRow[index].remove(value);
-        m_possibleAtPosition[index][column].remove(value);
+    for (unsigned char index = 0; index != 9; ++index) {
+        if (m_possibleAtRow[index].contains(value)) {
+            m_possibleAtRow[index].remove(value);
+        }
+        if (m_possibleAtPosition[index][column].contains(value)) {
+            m_possibleAtPosition[index][column].remove(value);
+        }
     }
-    unsigned short rowStart    = 3 * (row / 3);
-    unsigned short columnStart = 3 * (column / 3);
-    for (unsigned short i = rowStart; i != rowStart + 3; i++) {
-        for (unsigned short j = columnStart; j != columnStart + 3; ++j) {
+    //    m_possibleAtPosition[DIV_THREE[row]][DIV_THREE[column]].remove(value);
+    //    m_possibleAtPosition[DIV_THREE[row]][DIV_THREE[column] + 1].remove(value);
+    //    m_possibleAtPosition[DIV_THREE[row]][DIV_THREE[column] + 2].remove(value);
+    //    m_possibleAtPosition[DIV_THREE[row] + 1][DIV_THREE[column]].remove(value);
+    //    m_possibleAtPosition[DIV_THREE[row] + 1][DIV_THREE[column] + 1].remove(value);
+    //    m_possibleAtPosition[DIV_THREE[row] + 1][DIV_THREE[column] + 2].remove(value);
+    //    m_possibleAtPosition[DIV_THREE[row] + 2][DIV_THREE[column]].remove(value);
+    //    m_possibleAtPosition[DIV_THREE[row] + 2][DIV_THREE[column] + 1].remove(value);
+    //    m_possibleAtPosition[DIV_THREE[row] + 2][DIV_THREE[column] + 2].remove(value);
+
+    const unsigned char rowStart    = DIV_THREE[row];
+    const unsigned char columnStart = DIV_THREE[column];
+    for (unsigned char i = rowStart; i != rowStart + 3; i++) {
+        for (unsigned char j = columnStart; j != columnStart + 3; ++j) {
             m_possibleAtPosition[i][j].remove(value);
         }
     }
     m_rows[row].set(column, value);
 }
 
-bool Sudoku::isFree(unsigned short row, unsigned short column) const {
+bool Sudoku::isFree(unsigned char row, unsigned char column) const {
     assert(row < 9);
     assert(column < 9);
     return not m_rows[row].numberAtPositionIsSet(column);
 }
 
 bool Sudoku::solve() {
-    unsigned short minMissing = std::numeric_limits<unsigned short>::max();
-    unsigned short minRow;
-    unsigned short minColumn;
+    unsigned char minMissing = std::numeric_limits<unsigned char>::max();
+    unsigned char minRow;
+    unsigned char minColumn;
     NumberVector   numberVector;
     findNextBestMove(minRow, minColumn, numberVector, minMissing);
     switch (minMissing) {
         case 0: // There is an empty spot where no numbers can fit
             return false;
         case 1: // There is an empty spot where just one can fit
-            return solveWithSingleSubstitution(minRow, minColumn, numberVector.smallestMissing());
-        case std::numeric_limits<unsigned short>::max(): // No spot found with any missing ==> solved!
+            return solveWithSingleSubstitution(minRow, minColumn, numberVector.smallestNumber());
+        case std::numeric_limits<unsigned char>::max(): // No spot found with any missing ==> solved!
             return true;
         default: // Spot found with > 1  missing numbers, try them
             return solveWithSubstitutionsUsingCopy(minRow, minColumn, numberVector);
@@ -120,71 +122,71 @@ static NumberVector findSingles(const std::array<NumberVector, 9>& numbers) {
     return result & (tooMany.invert());
 }
 
-// NumberVector Sudoku::findSinglesInRow(unsigned short row) {
-//     NumberVector tooMany;
-//     NumberVector result;
-//     const auto&  possibleInRow = m_possibleAtPosition[row];
-//     for (unsigned short column = 0; column != 9; ++column) {
-//         if (isFree(row, column)) {
-//             tooMany |= (possibleInRow[column] & result);
-//             result |= possibleInRow[column];
-//         }
-//     }
-//     return result & (tooMany.invert());
-// }
-//
-// void Sudoku::fillHiddenSingles() {
-//     for (unsigned short row = 0; row != 9; ++row) {
-//         NumberVector singles = findSinglesInRow(row);
-//         for (unsigned short column = 0; column != 9; ++column) {
-//             if (isFree(row, column)) {
-//                 for (unsigned short pos = 1; pos != 10; ++pos) {
-//                     if (singles.contains(pos) && m_possibleAtPosition[row][column].contains(pos)) {
-//                         set(row, column, pos);
-//                         break;
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     for (unsigned short column = 0; column != 9; ++column) {
-//         NumberVector singles = findSingles({isFree(0, column) ? m_possibleAtPosition[0][column] : 0,
-//                                             isFree(1, column) ? m_possibleAtPosition[1][column] : 0,
-//                                             isFree(2, column) ? m_possibleAtPosition[2][column] : 0,
-//                                             isFree(3, column) ? m_possibleAtPosition[3][column] : 0,
-//                                             isFree(4, column) ? m_possibleAtPosition[4][column] : 0,
-//                                             isFree(5, column) ? m_possibleAtPosition[5][column] : 0,
-//                                             isFree(6, column) ? m_possibleAtPosition[6][column] : 0,
-//                                             isFree(7, column) ? m_possibleAtPosition[7][column] : 0,
-//                                             isFree(8, column) ? m_possibleAtPosition[8][column] : 0});
-//         for (unsigned short row = 0; row != 9; ++row) {
-//             if (isFree(row, column)) {
-//                 for (unsigned short pos = 1; pos != 10; ++pos) {
-//                     if (singles.contains(pos) && m_possibleAtPosition[row][column].contains(pos)) {
-//                         set(row, column, pos);
-//                         break;
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
+NumberVector Sudoku::findSinglesInRow(unsigned char row) {
+    NumberVector tooMany;
+    NumberVector result;
+    const auto&  possibleInRow = m_possibleAtPosition[row];
+    for (unsigned char column = 0; column != 9; ++column) {
+        if (isFree(row, column)) {
+            tooMany |= (possibleInRow[column] & result);
+            result |= possibleInRow[column];
+        }
+    }
+    return result & (tooMany.invert());
+}
+
+void Sudoku::fillHiddenSingles() {
+    for (unsigned char row = 0; row != 9; ++row) {
+        NumberVector singles = findSinglesInRow(row);
+        for (unsigned char column = 0; column != 9; ++column) {
+            if (isFree(row, column)) {
+                for (unsigned char pos = 1; pos != 10; ++pos) {
+                    if (singles.contains(pos) && m_possibleAtPosition[row][column].contains(pos)) {
+                        set(row, column, pos);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    for (unsigned char column = 0; column != 9; ++column) {
+        NumberVector singles = findSingles({isFree(0, column) ? m_possibleAtPosition[0][column] : 0,
+                                            isFree(1, column) ? m_possibleAtPosition[1][column] : 0,
+                                            isFree(2, column) ? m_possibleAtPosition[2][column] : 0,
+                                            isFree(3, column) ? m_possibleAtPosition[3][column] : 0,
+                                            isFree(4, column) ? m_possibleAtPosition[4][column] : 0,
+                                            isFree(5, column) ? m_possibleAtPosition[5][column] : 0,
+                                            isFree(6, column) ? m_possibleAtPosition[6][column] : 0,
+                                            isFree(7, column) ? m_possibleAtPosition[7][column] : 0,
+                                            isFree(8, column) ? m_possibleAtPosition[8][column] : 0});
+        for (unsigned char row = 0; row != 9; ++row) {
+            if (isFree(row, column)) {
+                for (unsigned char pos = 1; pos != 10; ++pos) {
+                    if (singles.contains(pos) && m_possibleAtPosition[row][column].contains(pos)) {
+                        set(row, column, pos);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
 
 size_t Sudoku::countSolutions() {
     //    fillHiddenSingles();
     bool           singlesWereFilled = false;
-    unsigned short minimumPossible   = std::numeric_limits<unsigned short>::max();
-    unsigned short minRow            = std::numeric_limits<unsigned short>::max();
-    unsigned short minColumn         = std::numeric_limits<unsigned short>::max();
+    unsigned char minimumPossible   = std::numeric_limits<unsigned char>::max();
+    unsigned char minRow            = std::numeric_limits<unsigned char>::max();
+    unsigned char minColumn         = std::numeric_limits<unsigned char>::max();
     for (size_t row = 0; row != 9; ++row) {
         for (size_t column = 0; column != 9; ++column) {
             if (isFree(row, column)) {
-                const unsigned short count = m_possibleAtPosition[row][column].count();
+                const unsigned char count = m_possibleAtPosition[row][column].count();
                 if (count == 0) {
                     return 0;
                 } else if (count == 1) {
                     singlesWereFilled = true;
-                    set(row, column, m_possibleAtPosition[row][column].invert().smallestMissing());
+                    set(row, column, m_possibleAtPosition[row][column].smallestNumber());
                 } else if (not singlesWereFilled) {
                     if (count < minimumPossible) {
                         minimumPossible = count;
@@ -197,16 +199,16 @@ size_t Sudoku::countSolutions() {
     }
     if (singlesWereFilled) {
         return countSolutions();
-    } else if (minimumPossible == std::numeric_limits<unsigned short>::max()) {
+    } else if (minimumPossible == std::numeric_limits<unsigned char>::max()) {
         return 1;
     } else {
         return countWithSubstitutionsUsingCopy(minRow, minColumn);
     }
 }
 
-bool Sudoku::solveWithSubstitutionsUsingCopy(unsigned short row, unsigned short column, const NumberVector& numberVector) {
+bool Sudoku::solveWithSubstitutionsUsingCopy(unsigned char row, unsigned char column, const NumberVector& numberVector) {
     assert(isFree(row, column));
-    for (unsigned short i = 1; i < 10; ++i) {
+    for (unsigned char i = 1; i < 10; ++i) {
         if (not numberVector.contains(i)) {
             Sudoku copy = *this;
             copy.set(row, column, i);
@@ -219,11 +221,11 @@ bool Sudoku::solveWithSubstitutionsUsingCopy(unsigned short row, unsigned short 
     return false;
 }
 
-size_t Sudoku::countWithSubstitutionsUsingCopy(unsigned short row, unsigned short column) {
+size_t Sudoku::countWithSubstitutionsUsingCopy(unsigned char row, unsigned char column) {
     assert(isFree(row, column));
-    size_t     count           = 0;
-    const auto possibleEntries = m_possibleAtPosition[row][column];
-    for (unsigned short i = 1; i != 10; ++i) {
+    size_t      count           = 0;
+    const auto& possibleEntries = m_possibleAtPosition[row][column];
+    for (unsigned char i = 1; i != 10; ++i) {
         if (possibleEntries.contains(i)) {
             Sudoku copy = *this;
             copy.set(row, column, i);
@@ -231,14 +233,6 @@ size_t Sudoku::countWithSubstitutionsUsingCopy(unsigned short row, unsigned shor
         }
     }
     return count;
-}
-
-NumberVector Sudoku::ruledOutAt(unsigned short row, unsigned short column) const {
-    return numbersInRow(row) | numbersInColumn(column) | numbersInBlock(indicesToBlock(row, column));
-}
-
-bool Sudoku::operator==(const Sudoku& other) {
-    return m_rows == other.m_rows;
 }
 
 Sudoku Sudoku::preset(size_t index) {
@@ -298,19 +292,19 @@ Sudoku Sudoku::preset(size_t index) {
     }
 }
 
-bool Sudoku::solveWithSingleSubstitution(unsigned short row, unsigned short column, unsigned short onlyPossible) {
+bool Sudoku::solveWithSingleSubstitution(unsigned char row, unsigned char column, unsigned char onlyPossible) {
     assert(isFree(row, column));
     Sudoku s = *this;
     s.set(row, column, onlyPossible);
     return s.solve();
 }
 
-void Sudoku::findNextBestMove(unsigned short& minRow, unsigned short& minColumn, NumberVector& numberVector, unsigned short& possibleCount) {
-    possibleCount = std::numeric_limits<unsigned short>::max();
-    for (unsigned short row = 0; row != 9; ++row) {
-        for (unsigned short column = 0; column != 9; ++column) {
+void Sudoku::findNextBestMove(unsigned char& minRow, unsigned char& minColumn, NumberVector& numberVector, unsigned char& possibleCount) {
+    possibleCount = std::numeric_limits<unsigned char>::max();
+    for (unsigned char row = 0; row != 9; ++row) {
+        for (unsigned char column = 0; column != 9; ++column) {
             if (isFree(row, column)) {
-                const NumberVector v = m_possibleAtPosition[row][column].invert();
+                const NumberVector v = m_possibleAtPosition[row][column];
                 if (v.missing() < possibleCount) {
                     possibleCount = v.missing();
                     minRow        = row;
@@ -323,8 +317,4 @@ void Sudoku::findNextBestMove(unsigned short& minRow, unsigned short& minColumn,
             }
         }
     }
-}
-
-bool Sudoku::canBePlaced(unsigned short row, unsigned short column, unsigned short value) {
-    return not(m_numbersInRows[row].contains(value)) && (not m_numbersInColumns[column].contains(value)) && (not m_numbersInBlocks[indicesToBlock(row, column)].contains(value));
 }
