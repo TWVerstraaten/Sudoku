@@ -5,8 +5,6 @@
 #ifndef _NUMBERVECTOR_H
 #define _NUMBERVECTOR_H
 
-//#define NUMBER_VECTOR_USING_BITSET
-
 #include <limits>
 #include <string>
 #include <vector>
@@ -20,6 +18,10 @@ class NumberVector {
 
     NumberVector& operator|=(const NumberVector& other);
 
+    NumberVector& operator&=(const NumberVector& other);
+
+    bool isEmpty() const;
+
     friend NumberVector operator|(NumberVector lhs, const NumberVector& rhs);
 
     friend NumberVector operator&(NumberVector lhs, const NumberVector& rhs);
@@ -32,19 +34,17 @@ class NumberVector {
 
     bool contains(size_t number) const;
 
-    unsigned char count() const;
+    unsigned short count() const;
 
-    unsigned char missing() const;
-
-    unsigned char smallestNumber() const;
+    unsigned short smallestNumber() const;
 
     bool hasOneThroughNine() const;
-
-    bool operator==(const NumberVector& other) const;
 
     std::string toString() const;
 
     static void INIT_ARRAYS();
+
+    const std::vector<unsigned short>& allEntries() const;
 
   private:
     unsigned short m_numberBits = 0;

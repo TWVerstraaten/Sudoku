@@ -19,34 +19,40 @@ class Sudoku {
 
     static Sudoku preset(size_t index);
 
-    size_t countSolutions();
-
     bool solve();
 
     std::string toString() const;
 
   private:
-    static unsigned char indicesToBlock(unsigned char row, unsigned char column);
+    bool set(unsigned short row, unsigned short column, unsigned short value);
 
-    void set(unsigned char row, unsigned char column, unsigned char value);
+    bool solveWithSubstitutions(unsigned short row, unsigned short column);
 
-    size_t countWithSubstitutionsUsingCopy(unsigned char row, unsigned char column);
+    bool isFree(unsigned short row, unsigned short column) const;
 
-    bool solveWithSingleSubstitution(unsigned char row, unsigned char column, unsigned char onlyPossible);
+    bool fillHiddenSingles();
 
-    bool solveWithSubstitutionsUsingCopy(unsigned char row, unsigned char column, const NumberVector& numberVector);
+    bool fillHiddenSinglesInRows();
 
-    bool isFree(unsigned char row, unsigned char column) const;
+    bool fillHiddenSinglesInColumns();
 
-    void findNextBestMove(unsigned char& minRow, unsigned char& minColumn, NumberVector& numberVector, unsigned char& possibleCount);
+    bool fillHiddenSinglesInBlocks();
 
-    void fillHiddenSingles();
+    bool potentiallyRemove(unsigned short row, unsigned short column, unsigned short value);
 
-    NumberVector findSinglesInRow(unsigned char row);
+    NumberVector findSinglesInRow(unsigned short row) const;
+
+    NumberVector findSinglesInColumn(unsigned short column) const;
+
+    NumberVector findSinglesInBlock(unsigned short firstRowOfBlock, unsigned short firstColumnOfBlock) const;
+
+    unsigned short getReductionCount(unsigned short row, unsigned short column) const;
+
+    unsigned short getReductionCount(unsigned short row, unsigned short column, unsigned short value) const;
 
     std::array<Row, 9> m_rows{};
 
-    std::array<std::array<NumberVector, 9>, 9> m_possibleAtPosition = {{{NumberVector{0}.invert()}}};
+    std::array<std::array<NumberVector, 9>, 9> m_possibleAtPosition = {{{NumberVector{}.invert()}}};
 };
 
 #endif //_SUDOKU_H

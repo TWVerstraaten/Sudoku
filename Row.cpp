@@ -5,7 +5,6 @@
 #include "Row.h"
 
 #include <cassert>
-#include <cctype>
 
 #define BITS_PER_NUMBER 4ul
 #define NUMBER_BIT_MASK 0xful
@@ -21,7 +20,6 @@ static size_t SHIFT_PER_COLUMN[9] = {
     BITS_PER_NUMBER * 7ul,
     BITS_PER_NUMBER * 8ul,
 };
-
 static size_t TOGGLE_OFF_MASK[9] = {~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[0]),
                                     ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[1]),
                                     ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[2]),
@@ -31,8 +29,7 @@ static size_t TOGGLE_OFF_MASK[9] = {~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[0]),
                                     ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[6]),
                                     ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[7]),
                                     ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[8])};
-
-static size_t SET_MASK[9] = {NUMBER_BIT_MASK << SHIFT_PER_COLUMN[0],
+static size_t SET_MASK[9]        = {NUMBER_BIT_MASK << SHIFT_PER_COLUMN[0],
                              NUMBER_BIT_MASK << SHIFT_PER_COLUMN[1],
                              NUMBER_BIT_MASK << SHIFT_PER_COLUMN[2],
                              NUMBER_BIT_MASK << SHIFT_PER_COLUMN[3],
@@ -54,14 +51,9 @@ Row::Row(const std::string& string) : m_entries(0ul) {
     }
 }
 
-unsigned char Row::numberAt(unsigned char column) const {
+unsigned short Row::numberAt(unsigned short column) const {
     assert(column < 9);
     return (m_entries >> SHIFT_PER_COLUMN[column]) & NUMBER_BIT_MASK;
-}
-
-bool Row::numberAtPositionIsSet(unsigned char column) const {
-    assert(column < 9);
-    return m_entries & SET_MASK[column];
 }
 
 void Row::set(size_t column, size_t value) {
@@ -74,4 +66,8 @@ void Row::set(size_t column, size_t value) {
 
 bool Row::operator==(const Row& other) const {
     return m_entries == other.m_entries;
+}
+
+bool Row::positionIsFree(unsigned short column) const {
+    return not(m_entries & (SET_MASK[column]));
 }

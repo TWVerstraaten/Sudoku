@@ -16,13 +16,13 @@ class Row {
 
     explicit Row(const std::string& string);
 
-    unsigned char numberAt(unsigned char column) const;
-
-    bool numberAtPositionIsSet(unsigned char column) const;
+    unsigned short numberAt(unsigned short column) const;
 
     void set(size_t column, size_t value);
 
     bool operator==(const Row& other) const;
+
+    bool positionIsFree(unsigned short column) const;
 
   private:
     size_t m_entries = 0ul;
