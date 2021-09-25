@@ -117,8 +117,42 @@ bool Sudoku::isFree(unsigned short row, unsigned short column) const {
     return m_rows.at(row).positionIsFree(column);
 }
 
+bool Sudoku::fillNakedSingles(bool& singleWasFilled) {
+    for (size_t row = 0; row != 9; ++row) {
+        for (unsigned int column = 0; column != 9; ++column) {
+            if (not isFree(row, column)) {
+                continue;
+            }
+            const auto&          current = m_possibleAtPosition[row][column];
+            const unsigned short count   = current.count();
+            if (count == 0) {
+                return false;
+            } else if (count == 1) {
+                if (not set(row, column, current.smallestNumber())) {
+                    return false;
+                }
+                singleWasFilled = true;
+            }
+        }
+    }
+    return true;
+}
+
+bool Sudoku::fillSingles() {
+    bool nakedSingleWasFilled  = true;
+    bool hiddenSingleWasFilled = true;
+    while (nakedSingleWasFilled || hiddenSingleWasFilled) {
+        nakedSingleWasFilled  = false;
+        hiddenSingleWasFilled = false;
+        if ((not fillAllHiddenSingles(hiddenSingleWasFilled)) || (not fillNakedSingles(nakedSingleWasFilled))) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool Sudoku::solve() {
-    if (not fillHiddenSingles()) {
+    if (not fillSingles()) {
         return false;
     }
     unsigned short minimumPossible   = std::numeric_limits<unsigned short>::max();
@@ -132,26 +166,14 @@ bool Sudoku::solve() {
             }
             const auto&          current = m_possibleAtPosition[row][column];
             const unsigned short count   = current.count();
-            switch (count) {
-                case 0:
-                    return false;
-                case 1:
-                    minimumPossible = 1;
-                    if (not set(row, column, current.smallestNumber())) {
-                        return false;
-                    }
-                    break;
-                default:
-                    if (count <= minimumPossible) {
-                        const unsigned short reductionCount = getReductionCount(row, column);
-                        if (count < minimumPossible || reductionCount > maxReductionCount) {
-                            minimumPossible   = count;
-                            minRow            = row;
-                            minColumn         = column;
-                            maxReductionCount = reductionCount;
-                        }
-                    }
-                    break;
+            if (count <= minimumPossible) {
+                const unsigned short reductionCount = getReductionCount(row, column);
+                if ((count < minimumPossible || reductionCount > maxReductionCount)) {
+                    minimumPossible   = count;
+                    minRow            = row;
+                    minColumn         = column;
+                    maxReductionCount = reductionCount;
+                }
             }
         }
     }
@@ -159,7 +181,7 @@ bool Sudoku::solve() {
         case 1:
             return solve();
         case std::numeric_limits<unsigned short>::max():
-            //        std::cout << toString() << "\n";
+            //            std::cout << toString() << "\n";
             return true;
         default:
             return solveWithSubstitutions(minRow, minColumn);
@@ -167,37 +189,53 @@ bool Sudoku::solve() {
 }
 
 unsigned short reductionWeight(unsigned short numPossible) {
-    assert(numPossible > 1);
+    assert(numPossible > 0);
     switch (numPossible) {
+        case 1:
+            return 0;
         case 2:
-            return 80;
+            return 4000;
         case 3:
-            return 40;
+            return 900;
+        case 4:
+            return 400;
         default:
-            return 20 - numPossible;
+            return 200 - 10 * numPossible;
     }
 }
 
 unsigned short Sudoku::getReductionCount(unsigned short row, unsigned short column, unsigned short value) const {
     unsigned short reductionCount = 0;
     for (unsigned short index = 0; index != 9; ++index) {
-        if (isFree(row, index) && m_possibleAtPosition[row][index].contains(value)) {
-            reductionCount += reductionWeight(m_possibleAtPosition[row][index].count());
+        if (index != column && isFree(row, index) && m_possibleAtPosition[row][index].contains(value)) {
+            const auto current = reductionWeight(m_possibleAtPosition[row][index].count());
+            //            if (current == 0) {
+            //                return 0;
+            //            }
+            reductionCount += current;
         }
-        if (isFree(index, column) && m_possibleAtPosition[index][column].contains(value)) {
-            reductionCount += reductionWeight(m_possibleAtPosition[index][column].count());
+        if (index != row && isFree(index, column) && m_possibleAtPosition[index][column].contains(value)) {
+            const auto current = reductionWeight(m_possibleAtPosition[index][column].count());
+            //            if (current == 0) {
+            //                return 0;
+            //            }
+            reductionCount += current;
         }
     }
     const unsigned short firstRowOfBlock    = DIV_THREE_TIMES_THREE[row];
     const unsigned short firstColumnOfBlock = DIV_THREE_TIMES_THREE[column];
     for (unsigned short r = firstRowOfBlock; r != firstRowOfBlock + 3; ++r) {
         for (unsigned short c = firstColumnOfBlock; c != firstColumnOfBlock + 3; ++c) {
-            if (isFree(r, c)) {
-                reductionCount += reductionWeight(m_possibleAtPosition[r][c].count());
+            if (isFree(r, c) && m_possibleAtPosition[r][c].contains(value) && not(r == row && c == column)) {
+                const auto current = reductionWeight(m_possibleAtPosition[r][c].count());
+                //                if (current == 0) {
+                //                    return 0;
+                //                }
+                reductionCount += current;
             }
         }
     }
-    return reductionCount - 3;
+    return reductionCount;
 }
 
 unsigned short Sudoku::getReductionCount(unsigned short row, unsigned short column) const {
@@ -305,45 +343,49 @@ NumberVector Sudoku::findSinglesInRow(unsigned short row) const {
     return result & (tooMany.invert());
 }
 
-bool Sudoku::fillHiddenSingles() {
-    //    for (unsigned short row = 0; row != 9; ++row) {
-    //        for (unsigned short first = 1; first != 9; ++first) {
-    //            if (m_possibleAtPosition[row][first].count() < 2) {
-    //                continue;
-    //            }
-    //            for (unsigned short second = 0; second != first; ++second) {
-    //                auto intersect = m_possibleAtPosition[row][first] & m_possibleAtPosition[row][second];
-    //                if (m_possibleAtPosition[row][first].count() < 2 || intersect.count() < 2) {
+bool Sudoku::fillAllHiddenSingles(bool& singleWasFilled) {
+    //        for (unsigned short row = 0; row != 9; ++row) {
+    //            for (unsigned short first = 1; first != 9; ++first) {
+    //                if (m_possibleAtPosition[row][first].count() < 2) {
     //                    continue;
     //                }
-    //                bool wasSeen = true;
-    //                for (size_t check = 0; wasSeen && check != 9; ++check) {
-    //                    if (intersect.count() < 2) {
-    //                        wasSeen = false;
+    //                for (unsigned short second = 0; second != first; ++second) {
+    //                    auto intersect = m_possibleAtPosition[row][first] & m_possibleAtPosition[row][second];
+    //                    if (m_possibleAtPosition[row][first].count() < 2 || intersect.count() < 2) {
     //                        continue;
     //                    }
-    //                    if (check != first && check != second) {
-    //                        intersect &= m_possibleAtPosition[row][check].invert();
+    //                    bool wasSeen = true;
+    //                    for (size_t check = 0; wasSeen && check != 9; ++check) {
+    //                        if (intersect.count() < 2) {
+    //                            wasSeen = false;
+    //                            continue;
+    //                        }
+    //                        if (check != first && check != second) {
+    //                            intersect &= m_possibleAtPosition[row][check].invert();
+    //                        }
     //                    }
-    //                }
-    //                if (wasSeen && intersect.count() == 2) {
-    //                    m_possibleAtPosition[row][first]  = intersect;
-    //                    m_possibleAtPosition[row][second] = intersect;
+    //                    if (wasSeen && intersect.count() == 2) {
+    //                        m_possibleAtPosition[row][first]  = intersect;
+    //                        m_possibleAtPosition[row][second] = intersect;
+    //                    }
     //                }
     //            }
     //        }
-    //    }
-    return fillHiddenSinglesInRows() && fillHiddenSinglesInColumns() && fillHiddenSinglesInBlocks();
+    return fillHiddenSinglesInRows(singleWasFilled) && fillHiddenSinglesInColumns(singleWasFilled) && fillHiddenSinglesInBlocks(singleWasFilled);
 }
 
-bool Sudoku::fillHiddenSinglesInRows() {
+bool Sudoku::fillHiddenSinglesInRows(bool& singleWasFilled) {
     for (unsigned short row = 0; row != 9; ++row) {
         const NumberVector singles = findSinglesInRow(row);
         for (unsigned short column = 0; column != 9; ++column) {
             if (isFree(row, column)) {
                 const auto singlesInPosition = singles & m_possibleAtPosition[row][column];
-                if (singlesInPosition.count() == 1 && not set(row, column, singlesInPosition.smallestNumber())) {
-                    return false;
+                if (singlesInPosition.count() == 1) {
+                    if (not set(row, column, singlesInPosition.smallestNumber())) {
+                        return false;
+                    } else {
+                        singleWasFilled = true;
+                    }
                 }
             }
         }
@@ -351,14 +393,18 @@ bool Sudoku::fillHiddenSinglesInRows() {
     return true;
 }
 
-bool Sudoku::fillHiddenSinglesInColumns() {
+bool Sudoku::fillHiddenSinglesInColumns(bool& singleWasFilled) {
     for (unsigned short column = 0; column != 9; ++column) {
         const NumberVector singles = findSinglesInColumn(column);
         for (unsigned short row = 0; row != 9; ++row) {
             if (isFree(row, column)) {
                 const auto singlesInPosition = singles & m_possibleAtPosition[row][column];
-                if (singlesInPosition.count() == 1 && not set(row, column, singlesInPosition.smallestNumber())) {
-                    return false;
+                if (singlesInPosition.count() == 1) {
+                    if (not set(row, column, singlesInPosition.smallestNumber())) {
+                        return false;
+                    } else {
+                        singleWasFilled = true;
+                    }
                 }
             }
         }
@@ -390,7 +436,7 @@ NumberVector Sudoku::findSinglesInBlock(unsigned short firstRowOfBlock, unsigned
                         isFree(firstRowOfBlock + 2, firstColumnOfBlock + 2) ? m_possibleAtPosition[firstRowOfBlock + 2][firstColumnOfBlock + 2] : 0});
 }
 
-bool Sudoku::fillHiddenSinglesInBlocks() {
+bool Sudoku::fillHiddenSinglesInBlocks(bool& singleWasFilled) {
     for (unsigned short block = 0; block != 9; ++block) {
         const size_t       firstRowOfBlock    = DIV_THREE_TIMES_THREE[block];
         const size_t       firstColumnOfBlock = (3 * block) % 9;
@@ -399,8 +445,12 @@ bool Sudoku::fillHiddenSinglesInBlocks() {
             for (unsigned short column = firstColumnOfBlock; column != firstColumnOfBlock + 3; ++column) {
                 if (isFree(row, column)) {
                     const auto singlesInPosition = singles & m_possibleAtPosition[row][column];
-                    if (singlesInPosition.count() == 1 && not set(row, column, singlesInPosition.smallestNumber())) {
-                        return false;
+                    if (singlesInPosition.count() == 1) {
+                        if (not set(row, column, singlesInPosition.smallestNumber())) {
+                            return false;
+                        } else {
+                            singleWasFilled = true;
+                        }
                     }
                 }
             }

@@ -30,13 +30,17 @@ class Sudoku {
 
     bool isFree(unsigned short row, unsigned short column) const;
 
-    bool fillHiddenSingles();
+    bool fillAllHiddenSingles(bool& singleWasFilled);
 
-    bool fillHiddenSinglesInRows();
+    bool fillNakedSingles(bool& singleWasFilled);
 
-    bool fillHiddenSinglesInColumns();
+    bool fillSingles();
 
-    bool fillHiddenSinglesInBlocks();
+    bool fillHiddenSinglesInRows(bool& singleWasFilled);
+
+    bool fillHiddenSinglesInColumns(bool& singleWasFilled);
+
+    bool fillHiddenSinglesInBlocks(bool& singleWasFilled);
 
     bool potentiallyRemove(unsigned short row, unsigned short column, unsigned short value);
 
