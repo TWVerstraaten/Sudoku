@@ -8,6 +8,7 @@
 #include <cassert>
 #include <iostream>
 #include <limits>
+#include <map>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -155,16 +156,25 @@ bool Sudoku::fillSingles() {
     return true;
 }
 
+struct Move {
+    unsigned short row;
+    unsigned short column;
+    unsigned short number;
+};
+
 bool Sudoku::solve() {
     if (not fillSingles()) {
+        return false;
+    }
+    if (not countingCheck()) {
         return false;
     }
     unsigned short minimumPossible            = std::numeric_limits<unsigned short>::max();
     unsigned short minRow                     = std::numeric_limits<unsigned short>::max();
     unsigned short minColumn                  = std::numeric_limits<unsigned short>::max();
-    size_t         maximumNakedSinglesCreated = 0;
-    for (size_t row = 0; row != 9; ++row) {
-        for (unsigned int column = 0; column != 9; ++column) {
+    unsigned short maximumNakedSinglesCreated = 0;
+    for (unsigned short row = 0; row != 9; ++row) {
+        for (unsigned short column = 0; column != 9; ++column) {
             if (not isFree(row, column)) {
                 continue;
             }
@@ -230,13 +240,10 @@ unsigned short Sudoku::getReductionCount(unsigned short row, unsigned short colu
 
 bool Sudoku::solveWithSubstitutions(unsigned short row, unsigned short column) {
     assert(isFree(row, column));
-    auto       allPossibilities = m_possibleAtPosition[row][column].allEntries();
-    const auto comparator       = [&](unsigned short first, unsigned short second) {
+    auto allPossibilities = m_possibleAtPosition[row][column].allEntries();
+    std::sort(allPossibilities.begin(), allPossibilities.end(), [&](unsigned short first, unsigned short second) {
         return numberOfNakedSingledCreated(row, column, first) < numberOfNakedSingledCreated(row, column, second);
-    };
-    if (allPossibilities.size() > 1) {
-        std::sort(allPossibilities.begin(), allPossibilities.end(), comparator);
-    }
+    });
     for (const auto number : allPossibilities) {
         Sudoku copy = *this;
         if (copy.set(row, column, number) && copy.solve()) {
@@ -442,7 +449,7 @@ bool Sudoku::fillHiddenSinglesInBlocks(bool& singleWasFilled) {
     return true;
 }
 
-size_t Sudoku::numberOfNakedSingledCreated(unsigned short row, unsigned short column, unsigned short value) {
+unsigned short Sudoku::numberOfNakedSingledCreated(unsigned short row, unsigned short column, unsigned short value) const {
     unsigned short count = 0;
     for (unsigned short index = 0; index != 9; ++index) {
         count += (isFree(row, index) && m_possibleAtPosition[row][index].count() == 2 && m_possibleAtPosition[row][index].contains(value));
@@ -458,11 +465,41 @@ size_t Sudoku::numberOfNakedSingledCreated(unsigned short row, unsigned short co
     return count - 3 * (m_possibleAtPosition[row][column].count() == 2);
 }
 
-size_t Sudoku::numberOfNakedSingledCreated(unsigned short row, unsigned short column) {
+unsigned short Sudoku::numberOfNakedSingledCreated(unsigned short row, unsigned short column) const {
     assert(isFree(row, column));
-    size_t result = 0;
+    unsigned short result = 0;
     for (const auto number : m_possibleAtPosition[row][column].allEntries()) {
         result += numberOfNakedSingledCreated(row, column, number);
     }
     return result;
+}
+
+bool Sudoku::countingCheck() const {
+    for (unsigned short row = 0; row != 9; ++row) {
+        NumberVector allPossibleInRow;
+        size_t       freeInRow = 0;
+        for (unsigned short column = 0; column != 9; ++column) {
+            if (isFree(row, column)) {
+                allPossibleInRow |= m_possibleAtPosition[row][column];
+                ++freeInRow;
+                if (allPossibleInRow.count() < freeInRow) {
+                    return false;
+                }
+            }
+        }
+    }
+    for (unsigned short column = 0; column != 9; ++column) {
+        NumberVector allPossibleInColumn;
+        size_t       freeInColumn = 0;
+        for (unsigned short row = 0; row != 9; ++row) {
+            if (isFree(row, column)) {
+                allPossibleInColumn |= m_possibleAtPosition[row][column];
+                ++freeInColumn;
+                if (allPossibleInColumn.count() < freeInColumn) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
 }
