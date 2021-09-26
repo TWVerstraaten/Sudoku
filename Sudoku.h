@@ -44,6 +44,10 @@ class Sudoku {
 
     bool potentiallyRemove(unsigned short row, unsigned short column, unsigned short value);
 
+    size_t numberOfNakedSingledCreated(unsigned short row, unsigned short column, unsigned short value);
+
+    size_t numberOfNakedSingledCreated(unsigned short row, unsigned short column);
+
     NumberVector findSinglesInRow(unsigned short row) const;
 
     NumberVector findSinglesInColumn(unsigned short column) const;

@@ -23,6 +23,10 @@ static const unsigned short INDICES_TO_BLOCK[9][9]   = {{0, 0, 0, 1, 1, 1, 2, 2,
                                                       {6, 6, 6, 7, 7, 7, 8, 8, 8},
                                                       {6, 6, 6, 7, 7, 7, 8, 8, 8}};
 
+static unsigned short max(unsigned short a, unsigned short b) {
+    return a > b ? a : b;
+}
+
 Sudoku::Sudoku(const std::string& string) {
     assert(string.length() == 81);
     for (unsigned short row = 0; row != 9; ++row) {
@@ -155,10 +159,10 @@ bool Sudoku::solve() {
     if (not fillSingles()) {
         return false;
     }
-    unsigned short minimumPossible   = std::numeric_limits<unsigned short>::max();
-    unsigned short minRow            = std::numeric_limits<unsigned short>::max();
-    unsigned short minColumn         = std::numeric_limits<unsigned short>::max();
-    unsigned short maxReductionCount = std::numeric_limits<unsigned short>::max();
+    unsigned short minimumPossible            = std::numeric_limits<unsigned short>::max();
+    unsigned short minRow                     = std::numeric_limits<unsigned short>::max();
+    unsigned short minColumn                  = std::numeric_limits<unsigned short>::max();
+    size_t         maximumNakedSinglesCreated = 0;
     for (size_t row = 0; row != 9; ++row) {
         for (unsigned int column = 0; column != 9; ++column) {
             if (not isFree(row, column)) {
@@ -167,74 +171,50 @@ bool Sudoku::solve() {
             const auto&          current = m_possibleAtPosition[row][column];
             const unsigned short count   = current.count();
             if (count <= minimumPossible) {
-                const unsigned short reductionCount = getReductionCount(row, column);
-                if ((count < minimumPossible || reductionCount > maxReductionCount)) {
-                    minimumPossible   = count;
-                    minRow            = row;
-                    minColumn         = column;
-                    maxReductionCount = reductionCount;
+                const unsigned short nakedSinglesCreated = numberOfNakedSingledCreated(row, column);
+                if (count < minimumPossible || nakedSinglesCreated > maximumNakedSinglesCreated) {
+                    minimumPossible            = count;
+                    minRow                     = row;
+                    minColumn                  = column;
+                    maximumNakedSinglesCreated = nakedSinglesCreated;
                 }
             }
         }
     }
-    switch (minimumPossible) {
-        case 1:
-            return solve();
-        case std::numeric_limits<unsigned short>::max():
-            //            std::cout << toString() << "\n";
-            return true;
-        default:
-            return solveWithSubstitutions(minRow, minColumn);
+    if (minimumPossible == std::numeric_limits<unsigned short>::max()) {
+        //            std::cout << toString() << "\n";
+        return true;
     }
+    return solveWithSubstitutions(minRow, minColumn);
 }
 
 unsigned short reductionWeight(unsigned short numPossible) {
-    assert(numPossible > 0);
-    switch (numPossible) {
-        case 1:
-            return 0;
-        case 2:
-            return 4000;
-        case 3:
-            return 900;
-        case 4:
-            return 400;
-        default:
-            return 200 - 10 * numPossible;
-    }
+    return 20 - numPossible;
 }
 
 unsigned short Sudoku::getReductionCount(unsigned short row, unsigned short column, unsigned short value) const {
     unsigned short reductionCount = 0;
     for (unsigned short index = 0; index != 9; ++index) {
-        if (index != column && isFree(row, index) && m_possibleAtPosition[row][index].contains(value)) {
-            const auto current = reductionWeight(m_possibleAtPosition[row][index].count());
-            //            if (current == 0) {
-            //                return 0;
-            //            }
-            reductionCount += current;
+        if (isFree(row, index) && m_possibleAtPosition[row][index].contains(value)) {
+            //            reductionCount += reductionWeight(m_possibleAtPosition[row][index].count());
+            reductionCount = max(reductionWeight(m_possibleAtPosition[row][index].count()), reductionCount);
         }
-        if (index != row && isFree(index, column) && m_possibleAtPosition[index][column].contains(value)) {
-            const auto current = reductionWeight(m_possibleAtPosition[index][column].count());
-            //            if (current == 0) {
-            //                return 0;
-            //            }
-            reductionCount += current;
+        if (isFree(index, column) && m_possibleAtPosition[index][column].contains(value)) {
+            reductionCount = max(reductionWeight(m_possibleAtPosition[index][column].count()), reductionCount);
+            //            reductionCount += reductionWeight(m_possibleAtPosition[index][column].count());
         }
     }
     const unsigned short firstRowOfBlock    = DIV_THREE_TIMES_THREE[row];
     const unsigned short firstColumnOfBlock = DIV_THREE_TIMES_THREE[column];
     for (unsigned short r = firstRowOfBlock; r != firstRowOfBlock + 3; ++r) {
         for (unsigned short c = firstColumnOfBlock; c != firstColumnOfBlock + 3; ++c) {
-            if (isFree(r, c) && m_possibleAtPosition[r][c].contains(value) && not(r == row && c == column)) {
-                const auto current = reductionWeight(m_possibleAtPosition[r][c].count());
-                //                if (current == 0) {
-                //                    return 0;
-                //                }
-                reductionCount += current;
+            if (isFree(r, c) && m_possibleAtPosition[r][c].contains(value)) {
+                //                reductionCount += reductionWeight(m_possibleAtPosition[r][c].count());
+                reductionCount = max(reductionWeight(m_possibleAtPosition[r][c].count()), reductionCount);
             }
         }
     }
+    //    return reductionCount - 3 * reductionWeight(m_possibleAtPosition[row][column].count());
     return reductionCount;
 }
 
@@ -243,17 +223,20 @@ unsigned short Sudoku::getReductionCount(unsigned short row, unsigned short colu
     const auto&    possible       = m_possibleAtPosition[row][column];
     for (const auto el : possible.allEntries()) {
         const auto current = getReductionCount(row, column, el);
-        reductionCount     = current > reductionCount ? current : reductionCount;
+        reductionCount     = max(current, reductionCount);
     }
     return reductionCount;
 }
 
 bool Sudoku::solveWithSubstitutions(unsigned short row, unsigned short column) {
     assert(isFree(row, column));
-    auto allPossibilities = m_possibleAtPosition[row][column].allEntries();
-    std::sort(allPossibilities.begin(), allPossibilities.end(), [&](unsigned short first, unsigned short second) {
-        return getReductionCount(row, column, first) > getReductionCount(row, column, second);
-    });
+    auto       allPossibilities = m_possibleAtPosition[row][column].allEntries();
+    const auto comparator       = [&](unsigned short first, unsigned short second) {
+        return numberOfNakedSingledCreated(row, column, first) < numberOfNakedSingledCreated(row, column, second);
+    };
+    if (allPossibilities.size() > 1) {
+        std::sort(allPossibilities.begin(), allPossibilities.end(), comparator);
+    }
     for (const auto number : allPossibilities) {
         Sudoku copy = *this;
         if (copy.set(row, column, number) && copy.solve()) {
@@ -457,4 +440,29 @@ bool Sudoku::fillHiddenSinglesInBlocks(bool& singleWasFilled) {
         }
     }
     return true;
+}
+
+size_t Sudoku::numberOfNakedSingledCreated(unsigned short row, unsigned short column, unsigned short value) {
+    unsigned short count = 0;
+    for (unsigned short index = 0; index != 9; ++index) {
+        count += (isFree(row, index) && m_possibleAtPosition[row][index].count() == 2 && m_possibleAtPosition[row][index].contains(value));
+        count += (isFree(index, column) && m_possibleAtPosition[index][column].count() == 2 && m_possibleAtPosition[index][column].contains(value));
+    }
+    const unsigned short firstRowOfBlock    = DIV_THREE_TIMES_THREE[row];
+    const unsigned short firstColumnOfBlock = DIV_THREE_TIMES_THREE[column];
+    for (unsigned short r = firstRowOfBlock; r != firstRowOfBlock + 3; ++r) {
+        for (unsigned short c = firstColumnOfBlock; c != firstColumnOfBlock + 3; ++c) {
+            count += (isFree(r, c) && m_possibleAtPosition[r][c].count() == 2 && m_possibleAtPosition[r][c].contains(value));
+        }
+    }
+    return count - 3 * (m_possibleAtPosition[row][column].count() == 2);
+}
+
+size_t Sudoku::numberOfNakedSingledCreated(unsigned short row, unsigned short column) {
+    assert(isFree(row, column));
+    size_t result = 0;
+    for (const auto number : m_possibleAtPosition[row][column].allEntries()) {
+        result += numberOfNakedSingledCreated(row, column, number);
+    }
+    return result;
 }
