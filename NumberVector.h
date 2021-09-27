@@ -14,7 +14,7 @@ class NumberVector {
   public:
     NumberVector() = default;
 
-    NumberVector(unsigned short numberBits);
+    NumberVector(uint16_t numberBits);
 
     NumberVector& operator|=(const NumberVector& other);
 
@@ -28,15 +28,15 @@ class NumberVector {
 
     NumberVector invert() const;
 
-    void add(size_t number);
+    void add(unsigned char number);
 
-    void remove(size_t number);
+    void remove(unsigned char number);
 
-    bool contains(size_t number) const;
+    bool contains(unsigned char number) const;
 
-    unsigned short count() const;
+    unsigned char count() const;
 
-    unsigned short smallestNumber() const;
+    unsigned char smallestNumber() const;
 
     bool hasOneThroughNine() const;
 
@@ -44,10 +44,10 @@ class NumberVector {
 
     static void INIT_ARRAYS();
 
-    const std::vector<unsigned short>& allEntries() const;
+    const std::vector<unsigned char>& allEntries() const;
 
   private:
-    unsigned short m_numberBits = 0;
+    uint16_t m_numberBits = 0;
 };
 
 #endif //_NUMBERVECTOR_H

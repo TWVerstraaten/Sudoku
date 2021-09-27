@@ -7,6 +7,7 @@
 
 #include "NumberVector.h"
 #include "Row.h"
+#include "RowArray.h"
 
 #include <array>
 
@@ -24,11 +25,11 @@ class Sudoku {
     std::string toString() const;
 
   private:
-    bool set(unsigned short row, unsigned short column, unsigned short value);
+    bool set(uint8_t row, uint8_t column, uint8_t value);
 
-    bool solveWithSubstitutions(unsigned short row, unsigned short column);
+    bool solveWithSubstitutions(uint8_t row, uint8_t column);
 
-    bool isFree(unsigned short row, unsigned short column) const;
+    bool isFree(uint8_t row, uint8_t column) const;
 
     bool fillAllHiddenSingles(bool& singleWasFilled);
 
@@ -42,25 +43,27 @@ class Sudoku {
 
     bool fillHiddenSinglesInBlocks(bool& singleWasFilled);
 
-    bool potentiallyRemove(unsigned short row, unsigned short column, unsigned short value);
+    bool checkRestricted(bool& possibleWasRemoved);
 
-    unsigned short numberOfNakedSingledCreated(unsigned short row, unsigned short column, unsigned short value) const;
+    bool potentiallyRemove(uint8_t row, uint8_t column, uint8_t value);
 
-    unsigned short numberOfNakedSingledCreated(unsigned short row, unsigned short column) const;
+    bool removeIfPresent(uint8_t row, uint8_t column, uint8_t value, bool& wasRemoved);
+
+    uint8_t numberOfNakedSingledCreated(uint8_t row, uint8_t column, uint8_t value) const;
+
+    uint8_t numberOfNakedSingledCreated(uint8_t row, uint8_t column) const;
 
     bool countingCheck() const;
 
-    NumberVector findSinglesInRow(unsigned short row) const;
+    NumberVector possibleAtPositionIfFree(uint8_t row, uint8_t column) const;
 
-    NumberVector findSinglesInColumn(unsigned short column) const;
+    NumberVector findSinglesInRow(uint8_t row) const;
 
-    NumberVector findSinglesInBlock(unsigned short firstRowOfBlock, unsigned short firstColumnOfBlock) const;
+    NumberVector findSinglesInColumn(uint8_t column) const;
 
-    unsigned short getReductionCount(unsigned short row, unsigned short column) const;
+    NumberVector findSinglesInBlock(uint8_t firstRowOfBlock, uint8_t firstColumnOfBlock) const;
 
-    unsigned short getReductionCount(unsigned short row, unsigned short column, unsigned short value) const;
-
-    std::array<Row, 9> m_rows{};
+    std::array<RowArray, 9> m_rows{};
 
     std::array<std::array<NumberVector, 9>, 9> m_possibleAtPosition = {{{NumberVector{}.invert()}}};
 };
