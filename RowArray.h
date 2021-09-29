@@ -13,16 +13,13 @@ class RowArray {
 
     explicit RowArray(const std::string& string);
 
-    uint8_t  numberAt(uint8_t  column) const;
-
-    void set(uint8_t  column, uint8_t  value);
-
-    bool operator==(const RowArray& other) const;
-
-    bool positionIsFree(uint8_t  column) const;
+    void                  set(uint8_t column, uint8_t value);
+    [[nodiscard]] uint8_t numberAt(uint8_t column) const;
+    [[nodiscard]] bool    operator==(const RowArray& other) const;
+    [[nodiscard]] bool    positionIsFree(uint8_t column) const;
 
   private:
-    std::array<uint8_t , 9> m_entries{};
+    std::array<uint8_t, 9> m_entries{};
 };
 
 #endif //_ROWARRAY_H

@@ -119,3 +119,7 @@ const std::vector<uint8_t>& NumberVector::allEntries() const {
 bool NumberVector::isEmpty() const {
     return COUNT_PRESENT[m_numberBits] == 0;
 }
+
+bool operator==(const NumberVector& lhs, const NumberVector& rhs) {
+    return lhs.m_numberBits == rhs.m_numberBits;
+}
