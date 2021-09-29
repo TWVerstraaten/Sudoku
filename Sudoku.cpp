@@ -4,6 +4,8 @@
 
 #include "Sudoku.h"
 
+#include "SudokuStaticArrays.h"
+
 #include <algorithm>
 #include <cassert>
 #include <iostream>
@@ -11,127 +13,25 @@
 #include <set>
 #include <sstream>
 
-static const uint8_t LINKED[9][9][20][2] = {
-    {{{0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 8}, {1, 0}, {1, 1}, {1, 2}, {2, 0}, {2, 1}, {2, 2}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0}},
-     {{0, 0}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 8}, {1, 0}, {1, 1}, {1, 2}, {2, 0}, {2, 1}, {2, 2}, {3, 1}, {4, 1}, {5, 1}, {6, 1}, {7, 1}, {8, 1}},
-     {{0, 0}, {0, 1}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 8}, {1, 0}, {1, 1}, {1, 2}, {2, 0}, {2, 1}, {2, 2}, {3, 2}, {4, 2}, {5, 2}, {6, 2}, {7, 2}, {8, 2}},
-     {{0, 0}, {0, 1}, {0, 2}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 8}, {1, 3}, {1, 4}, {1, 5}, {2, 3}, {2, 4}, {2, 5}, {3, 3}, {4, 3}, {5, 3}, {6, 3}, {7, 3}, {8, 3}},
-     {{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 5}, {0, 6}, {0, 7}, {0, 8}, {1, 3}, {1, 4}, {1, 5}, {2, 3}, {2, 4}, {2, 5}, {3, 4}, {4, 4}, {5, 4}, {6, 4}, {7, 4}, {8, 4}},
-     {{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 6}, {0, 7}, {0, 8}, {1, 3}, {1, 4}, {1, 5}, {2, 3}, {2, 4}, {2, 5}, {3, 5}, {4, 5}, {5, 5}, {6, 5}, {7, 5}, {8, 5}},
-     {{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 7}, {0, 8}, {1, 6}, {1, 7}, {1, 8}, {2, 6}, {2, 7}, {2, 8}, {3, 6}, {4, 6}, {5, 6}, {6, 6}, {7, 6}, {8, 6}},
-     {{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 8}, {1, 6}, {1, 7}, {1, 8}, {2, 6}, {2, 7}, {2, 8}, {3, 7}, {4, 7}, {5, 7}, {6, 7}, {7, 7}, {8, 7}},
-     {{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {1, 6}, {1, 7}, {1, 8}, {2, 6}, {2, 7}, {2, 8}, {3, 8}, {4, 8}, {5, 8}, {6, 8}, {7, 8}, {8, 8}}},
-    {{{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {1, 3}, {1, 4}, {1, 5}, {1, 6}, {1, 7}, {1, 8}, {2, 0}, {2, 1}, {2, 2}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0}},
-     {{0, 0}, {0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {1, 5}, {1, 6}, {1, 7}, {1, 8}, {2, 0}, {2, 1}, {2, 2}, {3, 1}, {4, 1}, {5, 1}, {6, 1}, {7, 1}, {8, 1}},
-     {{0, 0}, {0, 1}, {0, 2}, {1, 0}, {1, 1}, {1, 3}, {1, 4}, {1, 5}, {1, 6}, {1, 7}, {1, 8}, {2, 0}, {2, 1}, {2, 2}, {3, 2}, {4, 2}, {5, 2}, {6, 2}, {7, 2}, {8, 2}},
-     {{0, 3}, {0, 4}, {0, 5}, {1, 0}, {1, 1}, {1, 2}, {1, 4}, {1, 5}, {1, 6}, {1, 7}, {1, 8}, {2, 3}, {2, 4}, {2, 5}, {3, 3}, {4, 3}, {5, 3}, {6, 3}, {7, 3}, {8, 3}},
-     {{0, 3}, {0, 4}, {0, 5}, {1, 0}, {1, 1}, {1, 2}, {1, 3}, {1, 5}, {1, 6}, {1, 7}, {1, 8}, {2, 3}, {2, 4}, {2, 5}, {3, 4}, {4, 4}, {5, 4}, {6, 4}, {7, 4}, {8, 4}},
-     {{0, 3}, {0, 4}, {0, 5}, {1, 0}, {1, 1}, {1, 2}, {1, 3}, {1, 4}, {1, 6}, {1, 7}, {1, 8}, {2, 3}, {2, 4}, {2, 5}, {3, 5}, {4, 5}, {5, 5}, {6, 5}, {7, 5}, {8, 5}},
-     {{0, 6}, {0, 7}, {0, 8}, {1, 0}, {1, 1}, {1, 2}, {1, 3}, {1, 4}, {1, 5}, {1, 7}, {1, 8}, {2, 6}, {2, 7}, {2, 8}, {3, 6}, {4, 6}, {5, 6}, {6, 6}, {7, 6}, {8, 6}},
-     {{0, 6}, {0, 7}, {0, 8}, {1, 0}, {1, 1}, {1, 2}, {1, 3}, {1, 4}, {1, 5}, {1, 6}, {1, 8}, {2, 6}, {2, 7}, {2, 8}, {3, 7}, {4, 7}, {5, 7}, {6, 7}, {7, 7}, {8, 7}},
-     {{0, 6}, {0, 7}, {0, 8}, {1, 0}, {1, 1}, {1, 2}, {1, 3}, {1, 4}, {1, 5}, {1, 6}, {1, 7}, {2, 6}, {2, 7}, {2, 8}, {3, 8}, {4, 8}, {5, 8}, {6, 8}, {7, 8}, {8, 8}}},
-    {{{0, 0}, {0, 1}, {0, 2}, {1, 0}, {1, 1}, {1, 2}, {2, 1}, {2, 2}, {2, 3}, {2, 4}, {2, 5}, {2, 6}, {2, 7}, {2, 8}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0}},
-     {{0, 0}, {0, 1}, {0, 2}, {1, 0}, {1, 1}, {1, 2}, {2, 0}, {2, 2}, {2, 3}, {2, 4}, {2, 5}, {2, 6}, {2, 7}, {2, 8}, {3, 1}, {4, 1}, {5, 1}, {6, 1}, {7, 1}, {8, 1}},
-     {{0, 0}, {0, 1}, {0, 2}, {1, 0}, {1, 1}, {1, 2}, {2, 0}, {2, 1}, {2, 3}, {2, 4}, {2, 5}, {2, 6}, {2, 7}, {2, 8}, {3, 2}, {4, 2}, {5, 2}, {6, 2}, {7, 2}, {8, 2}},
-     {{0, 3}, {0, 4}, {0, 5}, {1, 3}, {1, 4}, {1, 5}, {2, 0}, {2, 1}, {2, 2}, {2, 4}, {2, 5}, {2, 6}, {2, 7}, {2, 8}, {3, 3}, {4, 3}, {5, 3}, {6, 3}, {7, 3}, {8, 3}},
-     {{0, 3}, {0, 4}, {0, 5}, {1, 3}, {1, 4}, {1, 5}, {2, 0}, {2, 1}, {2, 2}, {2, 3}, {2, 5}, {2, 6}, {2, 7}, {2, 8}, {3, 4}, {4, 4}, {5, 4}, {6, 4}, {7, 4}, {8, 4}},
-     {{0, 3}, {0, 4}, {0, 5}, {1, 3}, {1, 4}, {1, 5}, {2, 0}, {2, 1}, {2, 2}, {2, 3}, {2, 4}, {2, 6}, {2, 7}, {2, 8}, {3, 5}, {4, 5}, {5, 5}, {6, 5}, {7, 5}, {8, 5}},
-     {{0, 6}, {0, 7}, {0, 8}, {1, 6}, {1, 7}, {1, 8}, {2, 0}, {2, 1}, {2, 2}, {2, 3}, {2, 4}, {2, 5}, {2, 7}, {2, 8}, {3, 6}, {4, 6}, {5, 6}, {6, 6}, {7, 6}, {8, 6}},
-     {{0, 6}, {0, 7}, {0, 8}, {1, 6}, {1, 7}, {1, 8}, {2, 0}, {2, 1}, {2, 2}, {2, 3}, {2, 4}, {2, 5}, {2, 6}, {2, 8}, {3, 7}, {4, 7}, {5, 7}, {6, 7}, {7, 7}, {8, 7}},
-     {{0, 6}, {0, 7}, {0, 8}, {1, 6}, {1, 7}, {1, 8}, {2, 0}, {2, 1}, {2, 2}, {2, 3}, {2, 4}, {2, 5}, {2, 6}, {2, 7}, {3, 8}, {4, 8}, {5, 8}, {6, 8}, {7, 8}, {8, 8}}},
-    {{{0, 0}, {1, 0}, {2, 0}, {3, 1}, {3, 2}, {3, 3}, {3, 4}, {3, 5}, {3, 6}, {3, 7}, {3, 8}, {4, 0}, {4, 1}, {4, 2}, {5, 0}, {5, 1}, {5, 2}, {6, 0}, {7, 0}, {8, 0}},
-     {{0, 1}, {1, 1}, {2, 1}, {3, 0}, {3, 2}, {3, 3}, {3, 4}, {3, 5}, {3, 6}, {3, 7}, {3, 8}, {4, 0}, {4, 1}, {4, 2}, {5, 0}, {5, 1}, {5, 2}, {6, 1}, {7, 1}, {8, 1}},
-     {{0, 2}, {1, 2}, {2, 2}, {3, 0}, {3, 1}, {3, 3}, {3, 4}, {3, 5}, {3, 6}, {3, 7}, {3, 8}, {4, 0}, {4, 1}, {4, 2}, {5, 0}, {5, 1}, {5, 2}, {6, 2}, {7, 2}, {8, 2}},
-     {{0, 3}, {1, 3}, {2, 3}, {3, 0}, {3, 1}, {3, 2}, {3, 4}, {3, 5}, {3, 6}, {3, 7}, {3, 8}, {4, 3}, {4, 4}, {4, 5}, {5, 3}, {5, 4}, {5, 5}, {6, 3}, {7, 3}, {8, 3}},
-     {{0, 4}, {1, 4}, {2, 4}, {3, 0}, {3, 1}, {3, 2}, {3, 3}, {3, 5}, {3, 6}, {3, 7}, {3, 8}, {4, 3}, {4, 4}, {4, 5}, {5, 3}, {5, 4}, {5, 5}, {6, 4}, {7, 4}, {8, 4}},
-     {{0, 5}, {1, 5}, {2, 5}, {3, 0}, {3, 1}, {3, 2}, {3, 3}, {3, 4}, {3, 6}, {3, 7}, {3, 8}, {4, 3}, {4, 4}, {4, 5}, {5, 3}, {5, 4}, {5, 5}, {6, 5}, {7, 5}, {8, 5}},
-     {{0, 6}, {1, 6}, {2, 6}, {3, 0}, {3, 1}, {3, 2}, {3, 3}, {3, 4}, {3, 5}, {3, 7}, {3, 8}, {4, 6}, {4, 7}, {4, 8}, {5, 6}, {5, 7}, {5, 8}, {6, 6}, {7, 6}, {8, 6}},
-     {{0, 7}, {1, 7}, {2, 7}, {3, 0}, {3, 1}, {3, 2}, {3, 3}, {3, 4}, {3, 5}, {3, 6}, {3, 8}, {4, 6}, {4, 7}, {4, 8}, {5, 6}, {5, 7}, {5, 8}, {6, 7}, {7, 7}, {8, 7}},
-     {{0, 8}, {1, 8}, {2, 8}, {3, 0}, {3, 1}, {3, 2}, {3, 3}, {3, 4}, {3, 5}, {3, 6}, {3, 7}, {4, 6}, {4, 7}, {4, 8}, {5, 6}, {5, 7}, {5, 8}, {6, 8}, {7, 8}, {8, 8}}},
-    {{{0, 0}, {1, 0}, {2, 0}, {3, 0}, {3, 1}, {3, 2}, {4, 1}, {4, 2}, {4, 3}, {4, 4}, {4, 5}, {4, 6}, {4, 7}, {4, 8}, {5, 0}, {5, 1}, {5, 2}, {6, 0}, {7, 0}, {8, 0}},
-     {{0, 1}, {1, 1}, {2, 1}, {3, 0}, {3, 1}, {3, 2}, {4, 0}, {4, 2}, {4, 3}, {4, 4}, {4, 5}, {4, 6}, {4, 7}, {4, 8}, {5, 0}, {5, 1}, {5, 2}, {6, 1}, {7, 1}, {8, 1}},
-     {{0, 2}, {1, 2}, {2, 2}, {3, 0}, {3, 1}, {3, 2}, {4, 0}, {4, 1}, {4, 3}, {4, 4}, {4, 5}, {4, 6}, {4, 7}, {4, 8}, {5, 0}, {5, 1}, {5, 2}, {6, 2}, {7, 2}, {8, 2}},
-     {{0, 3}, {1, 3}, {2, 3}, {3, 3}, {3, 4}, {3, 5}, {4, 0}, {4, 1}, {4, 2}, {4, 4}, {4, 5}, {4, 6}, {4, 7}, {4, 8}, {5, 3}, {5, 4}, {5, 5}, {6, 3}, {7, 3}, {8, 3}},
-     {{0, 4}, {1, 4}, {2, 4}, {3, 3}, {3, 4}, {3, 5}, {4, 0}, {4, 1}, {4, 2}, {4, 3}, {4, 5}, {4, 6}, {4, 7}, {4, 8}, {5, 3}, {5, 4}, {5, 5}, {6, 4}, {7, 4}, {8, 4}},
-     {{0, 5}, {1, 5}, {2, 5}, {3, 3}, {3, 4}, {3, 5}, {4, 0}, {4, 1}, {4, 2}, {4, 3}, {4, 4}, {4, 6}, {4, 7}, {4, 8}, {5, 3}, {5, 4}, {5, 5}, {6, 5}, {7, 5}, {8, 5}},
-     {{0, 6}, {1, 6}, {2, 6}, {3, 6}, {3, 7}, {3, 8}, {4, 0}, {4, 1}, {4, 2}, {4, 3}, {4, 4}, {4, 5}, {4, 7}, {4, 8}, {5, 6}, {5, 7}, {5, 8}, {6, 6}, {7, 6}, {8, 6}},
-     {{0, 7}, {1, 7}, {2, 7}, {3, 6}, {3, 7}, {3, 8}, {4, 0}, {4, 1}, {4, 2}, {4, 3}, {4, 4}, {4, 5}, {4, 6}, {4, 8}, {5, 6}, {5, 7}, {5, 8}, {6, 7}, {7, 7}, {8, 7}},
-     {{0, 8}, {1, 8}, {2, 8}, {3, 6}, {3, 7}, {3, 8}, {4, 0}, {4, 1}, {4, 2}, {4, 3}, {4, 4}, {4, 5}, {4, 6}, {4, 7}, {5, 6}, {5, 7}, {5, 8}, {6, 8}, {7, 8}, {8, 8}}},
-    {{{0, 0}, {1, 0}, {2, 0}, {3, 0}, {3, 1}, {3, 2}, {4, 0}, {4, 1}, {4, 2}, {5, 1}, {5, 2}, {5, 3}, {5, 4}, {5, 5}, {5, 6}, {5, 7}, {5, 8}, {6, 0}, {7, 0}, {8, 0}},
-     {{0, 1}, {1, 1}, {2, 1}, {3, 0}, {3, 1}, {3, 2}, {4, 0}, {4, 1}, {4, 2}, {5, 0}, {5, 2}, {5, 3}, {5, 4}, {5, 5}, {5, 6}, {5, 7}, {5, 8}, {6, 1}, {7, 1}, {8, 1}},
-     {{0, 2}, {1, 2}, {2, 2}, {3, 0}, {3, 1}, {3, 2}, {4, 0}, {4, 1}, {4, 2}, {5, 0}, {5, 1}, {5, 3}, {5, 4}, {5, 5}, {5, 6}, {5, 7}, {5, 8}, {6, 2}, {7, 2}, {8, 2}},
-     {{0, 3}, {1, 3}, {2, 3}, {3, 3}, {3, 4}, {3, 5}, {4, 3}, {4, 4}, {4, 5}, {5, 0}, {5, 1}, {5, 2}, {5, 4}, {5, 5}, {5, 6}, {5, 7}, {5, 8}, {6, 3}, {7, 3}, {8, 3}},
-     {{0, 4}, {1, 4}, {2, 4}, {3, 3}, {3, 4}, {3, 5}, {4, 3}, {4, 4}, {4, 5}, {5, 0}, {5, 1}, {5, 2}, {5, 3}, {5, 5}, {5, 6}, {5, 7}, {5, 8}, {6, 4}, {7, 4}, {8, 4}},
-     {{0, 5}, {1, 5}, {2, 5}, {3, 3}, {3, 4}, {3, 5}, {4, 3}, {4, 4}, {4, 5}, {5, 0}, {5, 1}, {5, 2}, {5, 3}, {5, 4}, {5, 6}, {5, 7}, {5, 8}, {6, 5}, {7, 5}, {8, 5}},
-     {{0, 6}, {1, 6}, {2, 6}, {3, 6}, {3, 7}, {3, 8}, {4, 6}, {4, 7}, {4, 8}, {5, 0}, {5, 1}, {5, 2}, {5, 3}, {5, 4}, {5, 5}, {5, 7}, {5, 8}, {6, 6}, {7, 6}, {8, 6}},
-     {{0, 7}, {1, 7}, {2, 7}, {3, 6}, {3, 7}, {3, 8}, {4, 6}, {4, 7}, {4, 8}, {5, 0}, {5, 1}, {5, 2}, {5, 3}, {5, 4}, {5, 5}, {5, 6}, {5, 8}, {6, 7}, {7, 7}, {8, 7}},
-     {{0, 8}, {1, 8}, {2, 8}, {3, 6}, {3, 7}, {3, 8}, {4, 6}, {4, 7}, {4, 8}, {5, 0}, {5, 1}, {5, 2}, {5, 3}, {5, 4}, {5, 5}, {5, 6}, {5, 7}, {6, 8}, {7, 8}, {8, 8}}},
-    {{{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 1}, {6, 2}, {6, 3}, {6, 4}, {6, 5}, {6, 6}, {6, 7}, {6, 8}, {7, 0}, {7, 1}, {7, 2}, {8, 0}, {8, 1}, {8, 2}},
-     {{0, 1}, {1, 1}, {2, 1}, {3, 1}, {4, 1}, {5, 1}, {6, 0}, {6, 2}, {6, 3}, {6, 4}, {6, 5}, {6, 6}, {6, 7}, {6, 8}, {7, 0}, {7, 1}, {7, 2}, {8, 0}, {8, 1}, {8, 2}},
-     {{0, 2}, {1, 2}, {2, 2}, {3, 2}, {4, 2}, {5, 2}, {6, 0}, {6, 1}, {6, 3}, {6, 4}, {6, 5}, {6, 6}, {6, 7}, {6, 8}, {7, 0}, {7, 1}, {7, 2}, {8, 0}, {8, 1}, {8, 2}},
-     {{0, 3}, {1, 3}, {2, 3}, {3, 3}, {4, 3}, {5, 3}, {6, 0}, {6, 1}, {6, 2}, {6, 4}, {6, 5}, {6, 6}, {6, 7}, {6, 8}, {7, 3}, {7, 4}, {7, 5}, {8, 3}, {8, 4}, {8, 5}},
-     {{0, 4}, {1, 4}, {2, 4}, {3, 4}, {4, 4}, {5, 4}, {6, 0}, {6, 1}, {6, 2}, {6, 3}, {6, 5}, {6, 6}, {6, 7}, {6, 8}, {7, 3}, {7, 4}, {7, 5}, {8, 3}, {8, 4}, {8, 5}},
-     {{0, 5}, {1, 5}, {2, 5}, {3, 5}, {4, 5}, {5, 5}, {6, 0}, {6, 1}, {6, 2}, {6, 3}, {6, 4}, {6, 6}, {6, 7}, {6, 8}, {7, 3}, {7, 4}, {7, 5}, {8, 3}, {8, 4}, {8, 5}},
-     {{0, 6}, {1, 6}, {2, 6}, {3, 6}, {4, 6}, {5, 6}, {6, 0}, {6, 1}, {6, 2}, {6, 3}, {6, 4}, {6, 5}, {6, 7}, {6, 8}, {7, 6}, {7, 7}, {7, 8}, {8, 6}, {8, 7}, {8, 8}},
-     {{0, 7}, {1, 7}, {2, 7}, {3, 7}, {4, 7}, {5, 7}, {6, 0}, {6, 1}, {6, 2}, {6, 3}, {6, 4}, {6, 5}, {6, 6}, {6, 8}, {7, 6}, {7, 7}, {7, 8}, {8, 6}, {8, 7}, {8, 8}},
-     {{0, 8}, {1, 8}, {2, 8}, {3, 8}, {4, 8}, {5, 8}, {6, 0}, {6, 1}, {6, 2}, {6, 3}, {6, 4}, {6, 5}, {6, 6}, {6, 7}, {7, 6}, {7, 7}, {7, 8}, {8, 6}, {8, 7}, {8, 8}}},
-    {{{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {6, 1}, {6, 2}, {7, 1}, {7, 2}, {7, 3}, {7, 4}, {7, 5}, {7, 6}, {7, 7}, {7, 8}, {8, 0}, {8, 1}, {8, 2}},
-     {{0, 1}, {1, 1}, {2, 1}, {3, 1}, {4, 1}, {5, 1}, {6, 0}, {6, 1}, {6, 2}, {7, 0}, {7, 2}, {7, 3}, {7, 4}, {7, 5}, {7, 6}, {7, 7}, {7, 8}, {8, 0}, {8, 1}, {8, 2}},
-     {{0, 2}, {1, 2}, {2, 2}, {3, 2}, {4, 2}, {5, 2}, {6, 0}, {6, 1}, {6, 2}, {7, 0}, {7, 1}, {7, 3}, {7, 4}, {7, 5}, {7, 6}, {7, 7}, {7, 8}, {8, 0}, {8, 1}, {8, 2}},
-     {{0, 3}, {1, 3}, {2, 3}, {3, 3}, {4, 3}, {5, 3}, {6, 3}, {6, 4}, {6, 5}, {7, 0}, {7, 1}, {7, 2}, {7, 4}, {7, 5}, {7, 6}, {7, 7}, {7, 8}, {8, 3}, {8, 4}, {8, 5}},
-     {{0, 4}, {1, 4}, {2, 4}, {3, 4}, {4, 4}, {5, 4}, {6, 3}, {6, 4}, {6, 5}, {7, 0}, {7, 1}, {7, 2}, {7, 3}, {7, 5}, {7, 6}, {7, 7}, {7, 8}, {8, 3}, {8, 4}, {8, 5}},
-     {{0, 5}, {1, 5}, {2, 5}, {3, 5}, {4, 5}, {5, 5}, {6, 3}, {6, 4}, {6, 5}, {7, 0}, {7, 1}, {7, 2}, {7, 3}, {7, 4}, {7, 6}, {7, 7}, {7, 8}, {8, 3}, {8, 4}, {8, 5}},
-     {{0, 6}, {1, 6}, {2, 6}, {3, 6}, {4, 6}, {5, 6}, {6, 6}, {6, 7}, {6, 8}, {7, 0}, {7, 1}, {7, 2}, {7, 3}, {7, 4}, {7, 5}, {7, 7}, {7, 8}, {8, 6}, {8, 7}, {8, 8}},
-     {{0, 7}, {1, 7}, {2, 7}, {3, 7}, {4, 7}, {5, 7}, {6, 6}, {6, 7}, {6, 8}, {7, 0}, {7, 1}, {7, 2}, {7, 3}, {7, 4}, {7, 5}, {7, 6}, {7, 8}, {8, 6}, {8, 7}, {8, 8}},
-     {{0, 8}, {1, 8}, {2, 8}, {3, 8}, {4, 8}, {5, 8}, {6, 6}, {6, 7}, {6, 8}, {7, 0}, {7, 1}, {7, 2}, {7, 3}, {7, 4}, {7, 5}, {7, 6}, {7, 7}, {8, 6}, {8, 7}, {8, 8}}},
-    {{{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {6, 1}, {6, 2}, {7, 0}, {7, 1}, {7, 2}, {8, 1}, {8, 2}, {8, 3}, {8, 4}, {8, 5}, {8, 6}, {8, 7}, {8, 8}},
-     {{0, 1}, {1, 1}, {2, 1}, {3, 1}, {4, 1}, {5, 1}, {6, 0}, {6, 1}, {6, 2}, {7, 0}, {7, 1}, {7, 2}, {8, 0}, {8, 2}, {8, 3}, {8, 4}, {8, 5}, {8, 6}, {8, 7}, {8, 8}},
-     {{0, 2}, {1, 2}, {2, 2}, {3, 2}, {4, 2}, {5, 2}, {6, 0}, {6, 1}, {6, 2}, {7, 0}, {7, 1}, {7, 2}, {8, 0}, {8, 1}, {8, 3}, {8, 4}, {8, 5}, {8, 6}, {8, 7}, {8, 8}},
-     {{0, 3}, {1, 3}, {2, 3}, {3, 3}, {4, 3}, {5, 3}, {6, 3}, {6, 4}, {6, 5}, {7, 3}, {7, 4}, {7, 5}, {8, 0}, {8, 1}, {8, 2}, {8, 4}, {8, 5}, {8, 6}, {8, 7}, {8, 8}},
-     {{0, 4}, {1, 4}, {2, 4}, {3, 4}, {4, 4}, {5, 4}, {6, 3}, {6, 4}, {6, 5}, {7, 3}, {7, 4}, {7, 5}, {8, 0}, {8, 1}, {8, 2}, {8, 3}, {8, 5}, {8, 6}, {8, 7}, {8, 8}},
-     {{0, 5}, {1, 5}, {2, 5}, {3, 5}, {4, 5}, {5, 5}, {6, 3}, {6, 4}, {6, 5}, {7, 3}, {7, 4}, {7, 5}, {8, 0}, {8, 1}, {8, 2}, {8, 3}, {8, 4}, {8, 6}, {8, 7}, {8, 8}},
-     {{0, 6}, {1, 6}, {2, 6}, {3, 6}, {4, 6}, {5, 6}, {6, 6}, {6, 7}, {6, 8}, {7, 6}, {7, 7}, {7, 8}, {8, 0}, {8, 1}, {8, 2}, {8, 3}, {8, 4}, {8, 5}, {8, 7}, {8, 8}},
-     {{0, 7}, {1, 7}, {2, 7}, {3, 7}, {4, 7}, {5, 7}, {6, 6}, {6, 7}, {6, 8}, {7, 6}, {7, 7}, {7, 8}, {8, 0}, {8, 1}, {8, 2}, {8, 3}, {8, 4}, {8, 5}, {8, 6}, {8, 8}},
-     {{0, 8}, {1, 8}, {2, 8}, {3, 8}, {4, 8}, {5, 8}, {6, 6}, {6, 7}, {6, 8}, {7, 6}, {7, 7}, {7, 8}, {8, 0}, {8, 1}, {8, 2}, {8, 3}, {8, 4}, {8, 5}, {8, 6}, {8, 7}}}};
-
-static const uint8_t BLOCK_POSITIONS[9][9][2] = {{{0, 0}, {0, 1}, {0, 2}, {1, 0}, {1, 1}, {1, 2}, {2, 0}, {2, 1}, {2, 2}},
-                                                 {{3, 0}, {3, 1}, {3, 2}, {4, 0}, {4, 1}, {4, 2}, {5, 0}, {5, 1}, {5, 2}},
-                                                 {{6, 0}, {6, 1}, {6, 2}, {7, 0}, {7, 1}, {7, 2}, {8, 0}, {8, 1}, {8, 2}},
-                                                 {{0, 3}, {0, 4}, {0, 5}, {1, 3}, {1, 4}, {1, 5}, {2, 3}, {2, 4}, {2, 5}},
-                                                 {{3, 3}, {3, 4}, {3, 5}, {4, 3}, {4, 4}, {4, 5}, {5, 3}, {5, 4}, {5, 5}},
-                                                 {{6, 3}, {6, 4}, {6, 5}, {7, 3}, {7, 4}, {7, 5}, {8, 3}, {8, 4}, {8, 5}},
-                                                 {{0, 6}, {0, 7}, {0, 8}, {1, 6}, {1, 7}, {1, 8}, {2, 6}, {2, 7}, {2, 8}},
-                                                 {{3, 6}, {3, 7}, {3, 8}, {4, 6}, {4, 7}, {4, 8}, {5, 6}, {5, 7}, {5, 8}},
-                                                 {{6, 6}, {6, 7}, {6, 8}, {7, 6}, {7, 7}, {7, 8}, {8, 6}, {8, 7}, {8, 8}}};
-
-static const uint8_t TIMES_THREE_MOD_NINE[9]  = {0, 3, 6, 0, 3, 6, 0, 3, 6};
-static const uint8_t DIV_THREE_TIMES_THREE[9] = {0, 0, 0, 3, 3, 3, 6, 6, 6};
-static const uint8_t INDICES_TO_BLOCK[9][9]   = {{0, 0, 0, 1, 1, 1, 2, 2, 2},
-                                               {0, 0, 0, 1, 1, 1, 2, 2, 2},
-                                               {0, 0, 0, 1, 1, 1, 2, 2, 2},
-                                               {3, 3, 3, 4, 4, 4, 5, 5, 5},
-                                               {3, 3, 3, 4, 4, 4, 5, 5, 5},
-                                               {3, 3, 3, 4, 4, 4, 5, 5, 5},
-                                               {6, 6, 6, 7, 7, 7, 8, 8, 8},
-                                               {6, 6, 6, 7, 7, 7, 8, 8, 8},
-                                               {6, 6, 6, 7, 7, 7, 8, 8, 8}};
-
 Sudoku::Sudoku(const std::string& string) {
     assert(string.length() == 81);
     for (uint8_t row = 0; row != 9; ++row) {
         m_rows[row] = RowArray(string.substr(9 * row, 9));
     }
+    std::array<NumberVector, 9> numbersInRow;
+    std::array<NumberVector, 9> numbersInColumn;
+    std::array<NumberVector, 9> numbersInBlock;
     for (uint8_t row = 0; row != 9; ++row) {
         for (uint8_t column = 0; column != 9; ++column) {
-            m_numbersInColumn[column].add(m_rows[row].numberAt(column));
-            m_numbersInBlock[INDICES_TO_BLOCK[row][column]].add(m_rows[row].numberAt(column));
-            m_numbersInRow[row].add(m_rows[row].numberAt(column));
+            numbersInColumn[column].add(m_rows[row].numberAt(column));
+            numbersInBlock[INDICES_TO_BLOCK[row][column]].add(m_rows[row].numberAt(column));
+            numbersInRow[row].add(m_rows[row].numberAt(column));
         }
     }
     for (uint8_t row = 0; row != 9; ++row) {
         for (uint8_t column = 0; column != 9; ++column) {
             if (isFree(row, column)) {
-                m_possibleAtPosition[row][column] = (m_numbersInColumn[column] | m_numbersInRow[row] | m_numbersInBlock[INDICES_TO_BLOCK[row][column]]).invert();
+                m_possibleAtPosition[row][column] = (numbersInColumn[column] | numbersInRow[row] | numbersInBlock[INDICES_TO_BLOCK[row][column]]).invert();
             }
         }
     }
@@ -158,27 +58,20 @@ bool Sudoku::potentiallyRemovePossibility(uint8_t row, uint8_t column, uint8_t v
         m_possibleAtPosition[row][column].remove(value);
         if (m_possibleAtPosition[row][column].count() == 0) {
             return false;
-        } else if (m_possibleAtPosition[row][column].count() == 1) {
-            const auto forcedValue = m_possibleAtPosition[row][column].smallestNumber();
-            if (not set(row, column, forcedValue)) {
-                return false;
-            }
         }
+        //        else if (m_possibleAtPosition[row][column].count() == 1) {
+        //            const auto forcedValue = m_possibleAtPosition[row][column].smallestNumber();
+        //            if (not set(row, column, forcedValue)) {
+        //                return false;
+        //            }
+        //        }
     }
     return true;
 }
 
 bool Sudoku::set(uint8_t row, uint8_t column, uint8_t value) {
     assert(row < 9);
-    if (m_numbersInRow[row].contains(value) || m_numbersInColumn[column].contains(value) || m_numbersInBlock[INDICES_TO_BLOCK[row][column]].contains(value)) {
-        return false;
-    }
     m_rows[row].set(column, value);
-    m_possibleAtPosition[row][column] = NumberVector{};
-    m_numbersInRow[row].add(value);
-    m_numbersInColumn[column].add(value);
-    m_numbersInBlock[INDICES_TO_BLOCK[row][column]].add(value);
-
     for (const auto& [r, c] : LINKED[row][column]) {
         m_possibleAtPosition[r][c].remove(value);
         if (isFree(r, c) && m_possibleAtPosition[r][c].count() == 0) {
@@ -186,7 +79,6 @@ bool Sudoku::set(uint8_t row, uint8_t column, uint8_t value) {
         }
     }
     for (const auto& [r, c] : LINKED[row][column]) {
-        m_possibleAtPosition[r][c].remove(value);
         if (isFree(r, c) && m_possibleAtPosition[r][c].count() == 1 && not set(r, c, m_possibleAtPosition[r][c].smallestNumber())) {
             return false;
         }
@@ -203,16 +95,15 @@ bool Sudoku::isFree(uint8_t row, uint8_t column) const {
 bool Sudoku::fillNakedSingles(bool& singleWasFilled) {
     for (uint8_t row = 0; row != 9; ++row) {
         for (uint8_t column = 0; column != 9; ++column) {
-            if (not isFree(row, column)) {
-                continue;
-            }
-            const auto&   current = m_possibleAtPosition[row][column];
-            const uint8_t count   = current.count();
-            if (count == 1) {
-                if (not set(row, column, current.smallestNumber())) {
-                    return false;
+            if (isFree(row, column)) {
+                const auto&   current = m_possibleAtPosition[row][column];
+                const uint8_t count   = current.count();
+                if (count == 1) {
+                    if (not set(row, column, current.smallestNumber())) {
+                        return false;
+                    }
+                    singleWasFilled = true;
                 }
-                singleWasFilled = true;
             }
         }
     }
@@ -234,23 +125,30 @@ bool Sudoku::solve() {
     if (not fillSingles()) {
         return false;
     }
-    //    if (not countingCheck()) {
-    //        return false;
-    //    }
-
-    uint8_t minimumPossible = std::numeric_limits<uint8_t>::max();
-    uint8_t minRow          = std::numeric_limits<uint8_t>::max();
-    uint8_t minColumn       = std::numeric_limits<uint8_t>::max();
-    for (uint8_t row = 0; minimumPossible != 2 && row != 9; ++row) {
-        for (uint8_t column = 0; minimumPossible != 2 && column != 9; ++column) {
-            if (not isFree(row, column)) {
-                continue;
-            }
-            const uint8_t count = m_possibleAtPosition[row][column].count();
-            if (count < minimumPossible) {
-                minimumPossible = count;
-                minRow          = row;
-                minColumn       = column;
+    if (not countingCheck()) {
+        return false;
+    }
+    bool wasUpdated = false;
+    if (not findPointingSets(wasUpdated)) {
+        return false;
+    }
+    uint8_t minimumPossible   = std::numeric_limits<uint8_t>::max();
+    uint8_t minRow            = std::numeric_limits<uint8_t>::max();
+    uint8_t minColumn         = std::numeric_limits<uint8_t>::max();
+    float   minReductionScore = std::numeric_limits<float>::max();
+    for (uint8_t row = 0; row != 9; ++row) {
+        for (uint8_t column = 0; column != 9; ++column) {
+            if (isFree(row, column)) {
+                const uint8_t count = m_possibleAtPosition[row][column].count();
+                if (count <= minimumPossible) {
+                    const float reductionScore = getReductionScore(row, column);
+                    if (count < minimumPossible || reductionScore < minReductionScore) {
+                        minimumPossible   = count;
+                        minRow            = row;
+                        minColumn         = column;
+                        minReductionScore = reductionScore;
+                    }
+                }
             }
         }
     }
@@ -459,51 +357,65 @@ uint8_t Sudoku::numberOfNakedSingledCreated(uint8_t row, uint8_t column) const {
     return result;
 }
 
-bool Sudoku::countingCheck() const {
-    for (uint8_t row = 0; row != 9; ++row) {
-        NumberVector allPossibleInRow;
-        uint8_t      freeInRow = 0;
-        for (uint8_t column = 0; column != 9; ++column) {
-            if (isFree(row, column)) {
-                allPossibleInRow |= m_possibleAtPosition[row][column];
-                ++freeInRow;
-                if (allPossibleInRow.count() < freeInRow) {
-                    return false;
-                }
-            }
-        }
-    }
+bool Sudoku::rowCountingCheck(uint8_t row) const {
+    NumberVector allPossibleInRow;
+    uint8_t      freeInRow = 0;
     for (uint8_t column = 0; column != 9; ++column) {
-        NumberVector allPossibleInColumn;
-        uint8_t      freeInColumn = 0;
-        for (uint8_t row = 0; row != 9; ++row) {
-            if (isFree(row, column)) {
-                allPossibleInColumn |= m_possibleAtPosition[row][column];
-                ++freeInColumn;
-                if (allPossibleInColumn.count() < freeInColumn) {
-                    return false;
-                }
-            }
-        }
-    }
-    for (const auto& block : BLOCK_POSITIONS) {
-        NumberVector allPossibleInBlock;
-        uint8_t      freeInBlock = 0;
-        for (const auto& [row, column] : block) {
-            if (isFree(row, column)) {
-                allPossibleInBlock |= m_possibleAtPosition[row][column];
-                ++freeInBlock;
-                if (allPossibleInBlock.count() < freeInBlock) {
-                    return false;
-                }
+        if (isFree(row, column)) {
+            allPossibleInRow |= m_possibleAtPosition[row][column];
+            ++freeInRow;
+            if (allPossibleInRow.count() < freeInRow) {
+                return false;
             }
         }
     }
     return true;
 }
 
-const NumberVector& Sudoku::possibleIfFree(uint8_t row, uint8_t column) const {
-    return m_possibleAtPosition[row][column];
+bool Sudoku::columnCountingCheck(uint8_t column) const {
+    NumberVector allPossibleInColumn;
+    uint8_t      freeInColumn = 0;
+    for (uint8_t row = 0; row != 9; ++row) {
+        if (isFree(row, column)) {
+            allPossibleInColumn |= m_possibleAtPosition[row][column];
+            ++freeInColumn;
+            if (allPossibleInColumn.count() < freeInColumn) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool Sudoku::blockCountingCheck(uint8_t block) const {
+    NumberVector allPossibleInBlock;
+    uint8_t      freeInBlock = 0;
+    for (const auto& [row, column] : BLOCK_POSITIONS[block]) {
+        if (isFree(row, column)) {
+            allPossibleInBlock |= m_possibleAtPosition[row][column];
+            ++freeInBlock;
+            if (allPossibleInBlock.count() < freeInBlock) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool Sudoku::countingCheck() const {
+    for (uint8_t index = 0; index != 9; ++index) {
+        if ((not rowCountingCheck(index)) || (not columnCountingCheck(index)) || (not blockCountingCheck(index))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+NumberVector Sudoku::possibleIfFree(uint8_t row, uint8_t column) const {
+    if (isFree(row, column)) {
+        return m_possibleAtPosition[row][column];
+    }
+    return NumberVector{};
 }
 
 bool Sudoku::findPointingSets(bool& wasUpdated) {
@@ -624,4 +536,52 @@ bool Sudoku::isSolved() const {
         }
     }
     return true;
+}
+
+bool Sudoku::isConsistent() const {
+    for (uint8_t row = 0; row != 9; ++row) {
+        for (uint8_t column = 0; column != 9; ++column) {
+            if (isFree(row, column)) {
+                for (const auto& [r, c] : LINKED[row][column]) {
+                    if (not isFree(r, c) && m_possibleAtPosition[row][column].contains(m_rows[r].numberAt(c))) {
+                        return false;
+                    }
+                }
+            } else {
+                for (const auto& [r, c] : LINKED[row][column]) {
+                    if (not isFree(r, c) && m_rows[r].numberAt(c) == m_rows[row].numberAt(column)) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+static size_t min(size_t a, size_t b) {
+    return a < b ? a : b;
+}
+
+static size_t square(size_t a) {
+    return a * a * a;
+}
+
+float Sudoku::getReductionScore(uint8_t row, uint8_t column) const {
+    assert(isFree(row, column));
+    size_t result = 0;
+    for (const auto value : m_possibleAtPosition[row][column].allEntries()) {
+        result += square(getMinimumBranchingAfterSetting(row, column, value));
+    }
+    return static_cast<float>(result) / static_cast<float>(m_possibleAtPosition[row][column].count());
+}
+
+uint8_t Sudoku::getMinimumBranchingAfterSetting(uint8_t row, uint8_t column, uint8_t value) const {
+    size_t minimumBranch = std::numeric_limits<size_t>::max();
+    for (const auto& [r, c] : LINKED[row][column]) {
+        if (isFree(r, c)) {
+            minimumBranch = min(minimumBranch, m_possibleAtPosition[r][c].count() - m_possibleAtPosition[r][c].contains(value));
+        }
+    }
+    return minimumBranch;
 }

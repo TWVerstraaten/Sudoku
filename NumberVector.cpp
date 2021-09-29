@@ -4,55 +4,23 @@
 
 #include "NumberVector.h"
 
+#include "NumberVectorStaticArrays.h"
+
 #include <array>
 #include <cassert>
 #include <iostream>
 #include <sstream>
 #include <vector>
 
-static const size_t ADD_MASK[10]    = {0ul, 1ul << 1ul, 1ul << 2ul, 1ul << 3ul, 1ul << 4ul, 1ul << 5ul, 1ul << 6ul, 1ul << 7ul, 1ul << 8ul, 1ul << 9ul};
-static const size_t REMOVE_MASK[10] = {~ADD_MASK[0], ~ADD_MASK[1], ~ADD_MASK[2], ~ADD_MASK[3], ~ADD_MASK[4], ~ADD_MASK[5], ~ADD_MASK[6], ~ADD_MASK[7], ~ADD_MASK[8], ~ADD_MASK[9]};
-static uint8_t      COUNT_PRESENT[1ul << 10ul]                   = {0};
-static uint8_t      COUNT_MISSING[1ul << 10ul]                   = {0};
-static uint8_t      SMALLEST_NUMBER[1ul << 10ul]                 = {0};
-static std::array<std::vector<uint8_t>, 1ul << 10ul> ALL_ENTRIES = {{}};
-
-void NumberVector::INIT_ARRAYS() {
-    for (size_t i = 0; i != 1ul << 10ul; ++i) {
-        COUNT_PRESENT[i] = (i & 1) + COUNT_PRESENT[i >> 1];
-    }
-    for (size_t i = 0; i != 1ul << 10ul; ++i) {
-        COUNT_PRESENT[i] -= (i & 1);
-    }
-    for (size_t i = 0; i != 1ul << 10ul; ++i) {
-        COUNT_MISSING[i] = 9 - COUNT_PRESENT[i];
-    }
-    for (size_t i = 0; i != 1ul << 10ul; ++i) {
-        for (size_t bit = 1; bit <= 9; ++bit) {
-            if (i & (1 << bit)) {
-                SMALLEST_NUMBER[i] = bit;
-                break;
-            }
-        }
-    }
-    for (size_t i = 0; i != 1ul << 10ul; ++i) {
-        for (size_t bit = 1; bit <= 9; ++bit) {
-            if (i & (1 << bit)) {
-                ALL_ENTRIES[i].emplace_back(bit);
-            }
-        }
-    }
-}
-
 NumberVector::NumberVector(uint16_t numberBits) : m_numberBits(numberBits) {
 }
 
-NumberVector& NumberVector::operator|=(const NumberVector& other) {
+const NumberVector& NumberVector::operator|=(const NumberVector& other) {
     m_numberBits |= other.m_numberBits;
     return *this;
 }
 
-NumberVector& NumberVector::operator&=(const NumberVector& other) {
+const NumberVector& NumberVector::operator&=(const NumberVector& other) {
     m_numberBits &= other.m_numberBits;
     return *this;
 }

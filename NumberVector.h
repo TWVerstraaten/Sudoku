@@ -16,11 +16,10 @@ class NumberVector {
 
     explicit NumberVector(uint16_t numberBits);
 
-    static void                               INIT_ARRAYS();
     void                                      add(uint8_t number);
     void                                      remove(uint8_t number);
-    NumberVector&                             operator|=(const NumberVector& other);
-    NumberVector&                             operator&=(const NumberVector& other);
+    const NumberVector&                       operator|=(const NumberVector& other);
+    const NumberVector&                       operator&=(const NumberVector& other);
     [[nodiscard]] bool                        isEmpty() const;
     [[nodiscard]] bool                        contains(uint8_t number) const;
     [[nodiscard]] bool                        hasOneThroughNine() const;
@@ -32,7 +31,7 @@ class NumberVector {
 
     friend NumberVector operator|(NumberVector lhs, const NumberVector& rhs);
     friend NumberVector operator&(NumberVector lhs, const NumberVector& rhs);
-    friend bool operator==(const NumberVector& lhs,const NumberVector& rhs);
+    friend bool         operator==(const NumberVector& lhs, const NumberVector& rhs);
 
   private:
     uint16_t m_numberBits = 0;

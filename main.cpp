@@ -7,8 +7,6 @@
 #include <iostream>
 
 int main() {
-    NumberVector::INIT_ARRAYS();
-
     std::ifstream file("/home/pc/Desktop/clion/sudoku/tests");
     assert(file.is_open());
     size_t c;
@@ -21,7 +19,8 @@ int main() {
     while (std::getline(file, line)) {
         Sudoku s{line.substr(0, 81)};
         if (not s.solve()) {
-            std::cout << "Error\n";
+            std::cout << "Error in solving\n";
+            std::cout << s.toString() << "\n";
             exit(222);
         }
         ++i;
