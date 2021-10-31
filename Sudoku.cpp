@@ -140,6 +140,8 @@ bool Sudoku::solve() {
 }
 
 bool Sudoku::try_by_substituting(uint8_t row, uint8_t column) {
+
+
     assert(is_free(row, column));
     std::vector<Sudoku> tries;
     tries.reserve(m_possible_at_position[row][column].count());
