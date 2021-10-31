@@ -9,7 +9,7 @@
 #define BITS_PER_NUMBER 4ul
 #define NUMBER_BIT_MASK 0xful
 
-static size_t SHIFT_PER_COLUMN[9] = {
+static size_t g_shift_per_column[9] = {
     BITS_PER_NUMBER * 0ul,
     BITS_PER_NUMBER * 1ul,
     BITS_PER_NUMBER * 2ul,
@@ -20,24 +20,24 @@ static size_t SHIFT_PER_COLUMN[9] = {
     BITS_PER_NUMBER * 7ul,
     BITS_PER_NUMBER * 8ul,
 };
-static size_t TOGGLE_OFF_MASK[9] = {~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[0]),
-                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[1]),
-                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[2]),
-                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[3]),
-                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[4]),
-                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[5]),
-                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[6]),
-                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[7]),
-                                    ~(NUMBER_BIT_MASK << SHIFT_PER_COLUMN[8])};
-static size_t SET_MASK[9]        = {NUMBER_BIT_MASK << SHIFT_PER_COLUMN[0],
-                             NUMBER_BIT_MASK << SHIFT_PER_COLUMN[1],
-                             NUMBER_BIT_MASK << SHIFT_PER_COLUMN[2],
-                             NUMBER_BIT_MASK << SHIFT_PER_COLUMN[3],
-                             NUMBER_BIT_MASK << SHIFT_PER_COLUMN[4],
-                             NUMBER_BIT_MASK << SHIFT_PER_COLUMN[5],
-                             NUMBER_BIT_MASK << SHIFT_PER_COLUMN[6],
-                             NUMBER_BIT_MASK << SHIFT_PER_COLUMN[7],
-                             NUMBER_BIT_MASK << SHIFT_PER_COLUMN[8]};
+static size_t g_toggle_off_mask[9] = {~(NUMBER_BIT_MASK << g_shift_per_column[0]),
+                                    ~(NUMBER_BIT_MASK << g_shift_per_column[1]),
+                                    ~(NUMBER_BIT_MASK << g_shift_per_column[2]),
+                                    ~(NUMBER_BIT_MASK << g_shift_per_column[3]),
+                                    ~(NUMBER_BIT_MASK << g_shift_per_column[4]),
+                                    ~(NUMBER_BIT_MASK << g_shift_per_column[5]),
+                                    ~(NUMBER_BIT_MASK << g_shift_per_column[6]),
+                                    ~(NUMBER_BIT_MASK << g_shift_per_column[7]),
+                                    ~(NUMBER_BIT_MASK << g_shift_per_column[8])};
+static size_t g_set_mask[9]        = {NUMBER_BIT_MASK << g_shift_per_column[0],
+                             NUMBER_BIT_MASK << g_shift_per_column[1],
+                             NUMBER_BIT_MASK << g_shift_per_column[2],
+                             NUMBER_BIT_MASK << g_shift_per_column[3],
+                             NUMBER_BIT_MASK << g_shift_per_column[4],
+                             NUMBER_BIT_MASK << g_shift_per_column[5],
+                             NUMBER_BIT_MASK << g_shift_per_column[6],
+                             NUMBER_BIT_MASK << g_shift_per_column[7],
+                             NUMBER_BIT_MASK << g_shift_per_column[8]};
 
 Row::Row(const std::string& string) : m_entries(0ul) {
     assert(string.length() == 9);
@@ -51,16 +51,16 @@ Row::Row(const std::string& string) : m_entries(0ul) {
     }
 }
 
-unsigned short Row::numberAt(unsigned short column) const {
+unsigned short Row::number_at(unsigned short column) const {
     assert(column < 9);
-    return (m_entries >> SHIFT_PER_COLUMN[column]) & NUMBER_BIT_MASK;
+    return (m_entries >> g_shift_per_column[column]) & NUMBER_BIT_MASK;
 }
 
 void Row::set(size_t column, size_t value) {
     assert(column < 9);
-    m_entries &= TOGGLE_OFF_MASK[column];
+    m_entries &= g_toggle_off_mask[column];
     if (value != 0) {
-        m_entries |= value << SHIFT_PER_COLUMN[column];
+        m_entries |= value << g_shift_per_column[column];
     }
 }
 
@@ -68,6 +68,6 @@ bool Row::operator==(const Row& other) const {
     return m_entries == other.m_entries;
 }
 
-bool Row::positionIsFree(unsigned short column) const {
-    return not(m_entries & (SET_MASK[column]));
+bool Row::position_is_free(unsigned short column) const {
+    return not(m_entries & (g_set_mask[column]));
 }

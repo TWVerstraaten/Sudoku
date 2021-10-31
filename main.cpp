@@ -20,9 +20,12 @@ int main() {
         Sudoku s{line.substr(0, 81)};
         if (not s.solve()) {
             std::cout << "Error in solving\n";
-            std::cout << s.toString() << "\n";
+            std::cout << s.to_string() << "\n";
             exit(222);
         }
+        const auto sln = s.solution();
+        assert(sln->is_solved());
+
         ++i;
         if (i % 128 == 0) {
             const float frac = static_cast<float>(i) / c;
@@ -42,8 +45,8 @@ int main() {
     //    size_t N     = 500;
     //    size_t total = 0;
     //    for (size_t dummy = 0; dummy != N; ++dummy) {
-    //        //        Sudoku sudoku = Sudoku::PRESET(2);
-    //        Sudoku sudoku = Sudoku::PRESET(4);
+    //        //        Sudoku sudoku = Sudoku::preset(2);
+    //        Sudoku sudoku = Sudoku::preset(4);
     //        auto   start  = std::chrono::high_resolution_clock::now();
     //        std::cout << (sudoku.countSolutions()) << "\n";
     //        auto stop     = std::chrono::high_resolution_clock::now();

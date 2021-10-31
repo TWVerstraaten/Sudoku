@@ -18,7 +18,7 @@ RowArray::RowArray(const std::string& string) {
     }
 }
 
-uint8_t RowArray::numberAt(uint8_t column) const {
+uint8_t RowArray::number_at(uint8_t column) const {
     return m_entries[column];
 }
 
@@ -30,6 +30,6 @@ bool RowArray::operator==(const RowArray& other) const {
     return other.m_entries == m_entries;
 }
 
-bool RowArray::positionIsFree(uint8_t column) const {
+bool RowArray::position_is_free(uint8_t column) const {
     return m_entries[column] == 0;
 }

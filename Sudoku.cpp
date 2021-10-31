@@ -13,35 +13,37 @@
 #include <set>
 #include <sstream>
 
-Sudoku::Sudoku(const std::string& string) {
+Sudoku::Sudoku(const std::string &string) {
+    m_solution.reset(new Sudoku(*this));
     assert(string.length() == 81);
     for (uint8_t row = 0; row != 9; ++row) {
         m_rows[row] = RowArray(string.substr(9 * row, 9));
     }
-    std::array<NumberVector, 9> numbersInRow;
-    std::array<NumberVector, 9> numbersInColumn;
-    std::array<NumberVector, 9> numbersInBlock;
+    std::array<NumberVector, 9> numbers_in_row;
+    std::array<NumberVector, 9> numbers_in_column;
+    std::array<NumberVector, 9> numbers_in_block;
     for (uint8_t row = 0; row != 9; ++row) {
         for (uint8_t column = 0; column != 9; ++column) {
-            numbersInColumn[column].add(m_rows[row].numberAt(column));
-            numbersInBlock[INDICES_TO_BLOCK[row][column]].add(m_rows[row].numberAt(column));
-            numbersInRow[row].add(m_rows[row].numberAt(column));
+            numbers_in_column[column].add(number_at(row, column));
+            numbers_in_block[g_indices_to_block[row][column]].add(number_at(row, column));
+            numbers_in_row[row].add(number_at(row, column));
         }
     }
     for (uint8_t row = 0; row != 9; ++row) {
         for (uint8_t column = 0; column != 9; ++column) {
-            if (isFree(row, column)) {
-                m_possibleAtPosition[row][column] = (numbersInColumn[column] | numbersInRow[row] | numbersInBlock[INDICES_TO_BLOCK[row][column]]).invert();
+            if (is_free(row, column)) {
+                m_possible_at_position[row][column] = (numbers_in_column[column] | numbers_in_row[row] |
+                                                       numbers_in_block[g_indices_to_block[row][column]]).invert();
             }
         }
     }
 }
 
-std::string Sudoku::toString() const {
+std::string Sudoku::to_string() const {
     std::stringstream ss;
-    for (const auto& row : m_rows) {
+    for (const auto &row: m_rows) {
         for (uint8_t j = 0; j != 9; ++j) {
-            uint8_t value = row.numberAt(j);
+            uint8_t value = row.number_at(j);
             if (value == 0) {
                 ss << ".";
             } else {
@@ -53,56 +55,40 @@ std::string Sudoku::toString() const {
     return ss.str();
 }
 
-bool Sudoku::potentiallyRemovePossibility(uint8_t row, uint8_t column, uint8_t value) {
-    if (isFree(row, column)) {
-        m_possibleAtPosition[row][column].remove(value);
-        if (m_possibleAtPosition[row][column].count() == 0) {
-            return false;
-        }
-        //        else if (m_possibleAtPosition[row][column].count() == 1) {
-        //            const auto forcedValue = m_possibleAtPosition[row][column].smallestNumber();
-        //            if (not set(row, column, forcedValue)) {
-        //                return false;
-        //            }
-        //        }
-    }
-    return true;
-}
-
 bool Sudoku::set(uint8_t row, uint8_t column, uint8_t value) {
     assert(row < 9);
     m_rows[row].set(column, value);
-    for (const auto& [r, c] : LINKED[row][column]) {
-        m_possibleAtPosition[r][c].remove(value);
-        if (isFree(r, c) && m_possibleAtPosition[r][c].count() == 0) {
+    for (const auto&[r, c]: g_linked[row][column]) {
+        m_possible_at_position[r][c].remove(value);
+        if (not has_possibilities(row, column)) {
             return false;
         }
     }
-    for (const auto& [r, c] : LINKED[row][column]) {
-        if (isFree(r, c) && m_possibleAtPosition[r][c].count() == 1 && not set(r, c, m_possibleAtPosition[r][c].smallestNumber())) {
+    for (const auto&[r, c]: g_linked[row][column]) {
+        if (is_free(r, c) && m_possible_at_position[r][c].count() == 1 && not set(r, c, m_possible_at_position[r][c].smallest_number())) {
             return false;
         }
     }
     return true;
 }
 
-bool Sudoku::isFree(uint8_t row, uint8_t column) const {
+bool Sudoku::is_free(uint8_t row, uint8_t column) const {
     assert(row < 9);
     assert(column < 9);
-    return m_rows[row].positionIsFree(column);
+    return m_rows[row].position_is_free(column);
 }
 
-bool Sudoku::fillNakedSingles(bool& singleWasFilled) {
+bool Sudoku::fill_naked_singles(bool &single_was_filled) {
     for (uint8_t row = 0; row != 9; ++row) {
         for (uint8_t column = 0; column != 9; ++column) {
-            if (isFree(row, column)) {
-                const auto&   current = m_possibleAtPosition[row][column];
-                const uint8_t count   = current.count();
+            if (is_free(row, column)) {
+                const auto &current = m_possible_at_position[row][column];
+                const uint8_t count = current.count();
                 if (count == 1) {
-                    if (not set(row, column, current.smallestNumber())) {
+                    if (not set(row, column, current.smallest_number())) {
                         return false;
                     }
-                    singleWasFilled = true;
+                    single_was_filled = true;
                 }
             }
         }
@@ -110,68 +96,77 @@ bool Sudoku::fillNakedSingles(bool& singleWasFilled) {
     return true;
 }
 
-bool Sudoku::fillSingles() {
-    bool wasUpdated = true;
-    while (wasUpdated) {
-        wasUpdated = false;
-        if ((not fillNakedSingles(wasUpdated)) || (not fillAllHiddenSingles(wasUpdated))) {
-            return false;
-        }
+bool Sudoku::deterministic_inferences() {
+    bool was_updated = false;
+    bool any_was_updated = false;
+    if ((not fill_naked_singles(was_updated))) {
+        return false;
     }
-    return true;
+    any_was_updated |= was_updated;
+    if (not fill_all_hidden_singles(was_updated)) {
+        return false;
+    }
+    any_was_updated |= was_updated;
+    if ((not any_was_updated) && (not find_pointing_sets(any_was_updated))) {
+        return false;
+    }
+    if (any_was_updated) {
+        return deterministic_inferences();
+    }
+    return counting_check();
 }
 
 bool Sudoku::solve() {
-    if (not fillSingles()) {
+    if (not deterministic_inferences()) {
         return false;
     }
-    if (not countingCheck()) {
-        return false;
-    }
-    bool wasUpdated = false;
-    if (not findPointingSets(wasUpdated)) {
-        return false;
-    }
-    uint8_t minimumPossible   = std::numeric_limits<uint8_t>::max();
-    uint8_t minRow            = std::numeric_limits<uint8_t>::max();
-    uint8_t minColumn         = std::numeric_limits<uint8_t>::max();
-    float   minReductionScore = std::numeric_limits<float>::max();
+
+    uint8_t minimum_possible = std::numeric_limits<uint8_t>::max();
+    uint8_t min_row = std::numeric_limits<uint8_t>::max();
+    uint8_t min_column = std::numeric_limits<uint8_t>::max();
+    float min_reduction_score = std::numeric_limits<float>::max();
     for (uint8_t row = 0; row != 9; ++row) {
         for (uint8_t column = 0; column != 9; ++column) {
-            if (isFree(row, column)) {
-                const uint8_t count = m_possibleAtPosition[row][column].count();
-                if (count <= minimumPossible) {
-                    const float reductionScore = getReductionScore(row, column);
-                    if (count < minimumPossible || reductionScore < minReductionScore) {
-                        minimumPossible   = count;
-                        minRow            = row;
-                        minColumn         = column;
-                        minReductionScore = reductionScore;
+            if (is_free(row, column)) {
+                const uint8_t count = m_possible_at_position[row][column].count();
+                if (count <= minimum_possible) {
+                    const float reduction_score = get_reduction_score(row, column);
+                    if (count < minimum_possible || reduction_score < min_reduction_score) {
+                        minimum_possible = count;
+                        min_row = row;
+                        min_column = column;
+                        min_reduction_score = reduction_score;
                     }
                 }
             }
         }
     }
-    if (minimumPossible == std::numeric_limits<uint8_t>::max()) {
-        assert(isSolved());
+    if (minimum_possible == std::numeric_limits<uint8_t>::max()) {
+        assert(is_solved());
+        *m_solution = *this;
         return true;
     }
-    return solveWithSubstitutions(minRow, minColumn);
+    return try_by_substituting(min_row, min_column);
 }
 
-bool Sudoku::solveWithSubstitutions(uint8_t row, uint8_t column) {
-    assert(isFree(row, column));
-    const auto& allPossibilities = m_possibleAtPosition[row][column].allEntries();
-    for (const auto number : allPossibilities) {
+bool Sudoku::try_by_substituting(uint8_t row, uint8_t column) {
+    assert(is_free(row, column));
+    std::vector<Sudoku> tries;
+    for (const auto number: m_possible_at_position[row][column].all_entries()) {
         Sudoku copy = *this;
-        if (copy.set(row, column, number) && copy.solve()) {
+        if (copy.set(row, column, number)) {
+            tries.emplace_back(std::move(copy));
+        }
+    }
+    for (auto &copy: tries) {
+        if (copy.solve()) {
             return true;
         }
     }
     return false;
 }
 
-Sudoku Sudoku::PRESET(size_t index) {
+Sudoku Sudoku::preset(size_t index) {
     switch (index) {
         case 0:
             return Sudoku{"123456789"
@@ -228,63 +223,80 @@ Sudoku Sudoku::PRESET(size_t index) {
     }
 }
 
-static NumberVector findSingles(const std::array<NumberVector, 9>& numbers) {
-    NumberVector tooMany;
+NumberVector Sudoku::find_singles_in_block(uint8_t block) const {
+    NumberVector too_many;
     NumberVector result;
-    for (const auto& number : numbers) {
-        tooMany |= (number & result);
-        result |= number;
-    }
-    return result & (tooMany.invert());
-}
-
-NumberVector Sudoku::findSinglesInRow(uint8_t row) const {
-    NumberVector tooMany;
-    NumberVector result;
-    const auto&  possibleInRow = m_possibleAtPosition[row];
-    for (uint8_t column = 0; column != 9; ++column) {
-        if (isFree(row, column)) {
-            tooMany |= (possibleInRow[column] & result);
-            result |= possibleInRow[column];
+    for (const auto[column, row]: g_block_positions[block]) {
+        if (is_free(row, column)) {
+            const auto &possible = m_possible_at_position[row][column];
+            too_many |= (possible & result);
+            result |= possible;
         }
     }
-    return result & (tooMany.invert());
+    return result & (too_many.invert());
 }
 
-bool Sudoku::fillAllHiddenSingles(bool& singleWasFilled) {
-    return fillHiddenSinglesInRows(singleWasFilled) && fillHiddenSinglesInColumns(singleWasFilled) && fillHiddenSinglesInBlocks(singleWasFilled);
-}
-
-bool Sudoku::fillHiddenSinglesInRows(bool& singleWasFilled) {
+NumberVector Sudoku::find_singles_in_column(uint8_t column) const {
+    NumberVector too_many;
+    NumberVector result;
     for (uint8_t row = 0; row != 9; ++row) {
-        const NumberVector singles = findSinglesInRow(row);
-        for (uint8_t column = 0; column != 9; ++column) {
-            if (isFree(row, column)) {
-                const auto singlesInPosition = singles & m_possibleAtPosition[row][column];
-                if (singlesInPosition.count() == 1) {
-                    if (not set(row, column, singlesInPosition.smallestNumber())) {
-                        return false;
-                    } else {
-                        singleWasFilled = true;
-                    }
-                }
-            }
+        if (is_free(row, column)) {
+            const auto &possible = m_possible_at_position[row][column];
+            too_many |= (possible & result);
+            result |= possible;
         }
     }
-    return true;
+    return result & (too_many.invert());
 }
 
-bool Sudoku::fillHiddenSinglesInColumns(bool& singleWasFilled) {
+NumberVector Sudoku::find_singles_in_row(uint8_t row) const {
+    NumberVector too_many;
+    NumberVector result;
+    const auto &possible_in_row = m_possible_at_position[row];
     for (uint8_t column = 0; column != 9; ++column) {
-        const NumberVector singles = findSinglesInColumn(column);
+        if (is_free(row, column)) {
+            too_many |= (possible_in_row[column] & result);
+            result |= possible_in_row[column];
+        }
+    }
+    return result & (too_many.invert());
+}
+
+bool Sudoku::fill_all_hidden_singles(bool &single_was_filled) {
+    return fill_hidden_singles_in_rows(single_was_filled) && fill_hidden_singles_in_columns(single_was_filled) &&
+           fill_hidden_singles_in_blocks(single_was_filled);
+}
+
+bool Sudoku::fill_hidden_singles_in_rows(bool &single_was_filled) {
+    for (uint8_t row = 0; row != 9; ++row) {
+        const NumberVector singles = find_singles_in_row(row);
+        for (uint8_t column = 0; column != 9; ++column) {
+            if (is_free(row, column)) {
+                const auto singles_in_position = singles & m_possible_at_position[row][column];
+                if (singles_in_position.count() == 1) {
+                    if (not set(row, column, singles_in_position.smallest_number())) {
+                        return false;
+                    } else {
+                        single_was_filled = true;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool Sudoku::fill_hidden_singles_in_columns(bool &single_was_filled) {
+    for (uint8_t column = 0; column != 9; ++column) {
+        const NumberVector singles = find_singles_in_column(column);
         for (uint8_t row = 0; row != 9; ++row) {
-            if (isFree(row, column)) {
-                const auto singlesInPosition = singles & m_possibleAtPosition[row][column];
-                if (singlesInPosition.count() == 1) {
-                    if (not set(row, column, singlesInPosition.smallestNumber())) {
+            if (is_free(row, column)) {
+                const auto singles_in_position = singles & m_possible_at_position[row][column];
+                if (singles_in_position.count() == 1) {
+                    if (not set(row, column, singles_in_position.smallest_number())) {
                         return false;
                     } else {
-                        singleWasFilled = true;
+                        single_was_filled = true;
                     }
                 }
             }
@@ -293,41 +305,17 @@ bool Sudoku::fillHiddenSinglesInColumns(bool& singleWasFilled) {
     return true;
 }
 
-NumberVector Sudoku::findSinglesInColumn(uint8_t column) const {
-    return findSingles({possibleIfFree(0, column),
-                        possibleIfFree(1, column),
-                        possibleIfFree(2, column),
-                        possibleIfFree(3, column),
-                        possibleIfFree(4, column),
-                        possibleIfFree(5, column),
-                        possibleIfFree(6, column),
-                        possibleIfFree(7, column),
-                        possibleIfFree(8, column)});
-}
-
-NumberVector Sudoku::findSinglesInBlock(uint8_t firstRowOfBlock, uint8_t firstColumnOfBlock) const {
-    return findSingles({possibleIfFree(firstRowOfBlock, firstColumnOfBlock),
-                        possibleIfFree(firstRowOfBlock + 1, firstColumnOfBlock),
-                        possibleIfFree(firstRowOfBlock + 2, firstColumnOfBlock),
-                        possibleIfFree(firstRowOfBlock, firstColumnOfBlock + 1),
-                        possibleIfFree(firstRowOfBlock + 1, firstColumnOfBlock + 1),
-                        possibleIfFree(firstRowOfBlock + 2, firstColumnOfBlock + 1),
-                        possibleIfFree(firstRowOfBlock, firstColumnOfBlock + 2),
-                        possibleIfFree(firstRowOfBlock + 1, firstColumnOfBlock + 2),
-                        possibleIfFree(firstRowOfBlock + 2, firstColumnOfBlock + 2)});
-}
-
-bool Sudoku::fillHiddenSinglesInBlocks(bool& singleWasFilled) {
+bool Sudoku::fill_hidden_singles_in_blocks(bool &single_was_filled) {
     for (uint8_t block = 0; block != 9; ++block) {
-        const NumberVector singles = findSinglesInBlock(DIV_THREE_TIMES_THREE[block], TIMES_THREE_MOD_NINE[block]);
-        for (const auto& [column, row] : BLOCK_POSITIONS[block]) {
-            if (isFree(row, column)) {
-                const auto singlesInPosition = singles & m_possibleAtPosition[row][column];
-                if (singlesInPosition.count() == 1) {
-                    if (not set(row, column, singlesInPosition.smallestNumber())) {
+        const NumberVector singles = find_singles_in_block(block);
+        for (const auto&[column, row]: g_block_positions[block]) {
+            if (is_free(row, column)) {
+                const auto singles_in_position = singles & m_possible_at_position[row][column];
+                if (singles_in_position.count() == 1) {
+                    if (not set(row, column, singles_in_position.smallest_number())) {
                         return false;
                     } else {
-                        singleWasFilled = true;
+                        single_was_filled = true;
                     }
                 }
             }
@@ -336,35 +324,36 @@ bool Sudoku::fillHiddenSinglesInBlocks(bool& singleWasFilled) {
     return true;
 }
 
-uint8_t Sudoku::numberOfNakedSingledCreated(uint8_t row, uint8_t column, uint8_t value) const {
+uint8_t Sudoku::number_of_naked_singled_created(uint8_t row, uint8_t column, uint8_t value) const {
     uint8_t count = 0;
     for (uint8_t index = 0; index != 9; ++index) {
-        count += (isFree(row, index) && m_possibleAtPosition[row][index].count() == 2 && m_possibleAtPosition[row][index].contains(value));
-        count += (isFree(index, column) && m_possibleAtPosition[index][column].count() == 2 && m_possibleAtPosition[index][column].contains(value));
+        count += (is_free(row, index) && m_possible_at_position[row][index].count() == 2 && m_possible_at_position[row][index].contains(value));
+        count += (is_free(index, column) && m_possible_at_position[index][column].count() == 2 &&
+                  m_possible_at_position[index][column].contains(value));
     }
-    for (const auto& [c, r] : BLOCK_POSITIONS[INDICES_TO_BLOCK[row][column]]) {
-        count += (isFree(r, c) && m_possibleAtPosition[r][c].count() == 2 && m_possibleAtPosition[r][c].contains(value));
+    for (const auto&[c, r]: g_block_positions[g_indices_to_block[row][column]]) {
+        count += (is_free(r, c) && m_possible_at_position[r][c].count() == 2 && m_possible_at_position[r][c].contains(value));
     }
-    return count - 3 * (m_possibleAtPosition[row][column].count() == 2);
+    return count - 3 * (m_possible_at_position[row][column].count() == 2);
 }
 
-uint8_t Sudoku::numberOfNakedSingledCreated(uint8_t row, uint8_t column) const {
-    assert(isFree(row, column));
+uint8_t Sudoku::number_of_naked_singled_created(uint8_t row, uint8_t column) const {
+    assert(is_free(row, column));
     uint8_t result = 0;
-    for (const auto number : m_possibleAtPosition[row][column].allEntries()) {
-        result += numberOfNakedSingledCreated(row, column, number);
+    for (const auto number: m_possible_at_position[row][column].all_entries()) {
+        result += number_of_naked_singled_created(row, column, number);
     }
     return result;
 }
 
-bool Sudoku::rowCountingCheck(uint8_t row) const {
-    NumberVector allPossibleInRow;
-    uint8_t      freeInRow = 0;
+bool Sudoku::row_counting_check(uint8_t row) const {
+    NumberVector all_possible_in_row;
+    uint8_t free_in_row = 0;
     for (uint8_t column = 0; column != 9; ++column) {
-        if (isFree(row, column)) {
-            allPossibleInRow |= m_possibleAtPosition[row][column];
-            ++freeInRow;
-            if (allPossibleInRow.count() < freeInRow) {
+        if (is_free(row, column)) {
+            all_possible_in_row |= m_possible_at_position[row][column];
+            ++free_in_row;
+            if (all_possible_in_row.count() < free_in_row) {
                 return false;
             }
         }
@@ -372,14 +361,14 @@ bool Sudoku::rowCountingCheck(uint8_t row) const {
     return true;
 }
 
-bool Sudoku::columnCountingCheck(uint8_t column) const {
-    NumberVector allPossibleInColumn;
-    uint8_t      freeInColumn = 0;
+bool Sudoku::column_counting_check(uint8_t column) const {
+    NumberVector all_possible_in_column;
+    uint8_t free_in_column = 0;
     for (uint8_t row = 0; row != 9; ++row) {
-        if (isFree(row, column)) {
-            allPossibleInColumn |= m_possibleAtPosition[row][column];
-            ++freeInColumn;
-            if (allPossibleInColumn.count() < freeInColumn) {
+        if (is_free(row, column)) {
+            all_possible_in_column |= m_possible_at_position[row][column];
+            ++free_in_column;
+            if (all_possible_in_column.count() < free_in_column) {
                 return false;
             }
         }
@@ -387,14 +376,14 @@ bool Sudoku::columnCountingCheck(uint8_t column) const {
     return true;
 }
 
-bool Sudoku::blockCountingCheck(uint8_t block) const {
-    NumberVector allPossibleInBlock;
-    uint8_t      freeInBlock = 0;
-    for (const auto& [row, column] : BLOCK_POSITIONS[block]) {
-        if (isFree(row, column)) {
-            allPossibleInBlock |= m_possibleAtPosition[row][column];
-            ++freeInBlock;
-            if (allPossibleInBlock.count() < freeInBlock) {
+bool Sudoku::block_counting_check(uint8_t block) const {
+    NumberVector all_possible_in_block;
+    uint8_t free_in_block = 0;
+    for (const auto&[row, column]: g_block_positions[block]) {
+        if (is_free(row, column)) {
+            all_possible_in_block |= m_possible_at_position[row][column];
+            ++free_in_block;
+            if (all_possible_in_block.count() < free_in_block) {
                 return false;
             }
         }
@@ -402,37 +391,40 @@ bool Sudoku::blockCountingCheck(uint8_t block) const {
     return true;
 }
 
-bool Sudoku::countingCheck() const {
+bool Sudoku::counting_check() const {
     for (uint8_t index = 0; index != 9; ++index) {
-        if ((not rowCountingCheck(index)) || (not columnCountingCheck(index)) || (not blockCountingCheck(index))) {
+        if ((not row_counting_check(index)) || (not column_counting_check(index)) || (not block_counting_check(index))) {
             return false;
         }
     }
     return true;
 }
 
-NumberVector Sudoku::possibleIfFree(uint8_t row, uint8_t column) const {
-    if (isFree(row, column)) {
-        return m_possibleAtPosition[row][column];
+NumberVector Sudoku::possible_if_free(uint8_t row, uint8_t column) const {
+    if (is_free(row, column)) {
+        return m_possible_at_position[row][column];
     }
     return NumberVector{};
 }
 
-bool Sudoku::findPointingSets(bool& wasUpdated) {
+bool Sudoku::find_pointing_sets(bool &was_updated) {
     for (uint8_t row = 0; row < 9; row += 3) {
         for (uint8_t column = 0; column < 9; column += 3) {
-            const NumberVector possibleInFirstRow  = possibleIfFree(row, column) | possibleIfFree(row, column + 1) | possibleIfFree(row, column + 2);
-            const NumberVector possibleInSecondRow = possibleIfFree(row + 1, column) | possibleIfFree(row + 1, column + 1) | possibleIfFree(row + 1, column + 2);
-            const NumberVector possibleInThirdRow  = possibleIfFree(row + 2, column) | possibleIfFree(row + 2, column + 1) | possibleIfFree(row + 2, column + 2);
+            const NumberVector possible_in_first_row =
+                    possible_if_free(row, column) | possible_if_free(row, column + 1) | possible_if_free(row, column + 2);
+            const NumberVector possible_in_second_row =
+                    possible_if_free(row + 1, column) | possible_if_free(row + 1, column + 1) | possible_if_free(row + 1, column + 2);
+            const NumberVector possible_in_third_row =
+                    possible_if_free(row + 2, column) | possible_if_free(row + 2, column + 1) | possible_if_free(row + 2, column + 2);
 
-            const NumberVector uniqueInRow[3]{possibleInFirstRow & (possibleInSecondRow.invert()) & (possibleInThirdRow.invert()),
-                                              possibleInSecondRow & (possibleInFirstRow.invert()) & (possibleInThirdRow.invert()),
-                                              possibleInThirdRow & (possibleInSecondRow.invert()) & (possibleInFirstRow.invert())};
-            for (uint8_t rowOffset = 0; rowOffset != 3; ++rowOffset) {
-                for (const auto value : uniqueInRow[rowOffset].allEntries()) {
-                    for (uint8_t columnToRemove = 0; columnToRemove != 9; ++columnToRemove) {
-                        if (columnToRemove < column || columnToRemove > column + 2) {
-                            if (not removeIfPresent(row + rowOffset, columnToRemove, value, wasUpdated)) {
+            const NumberVector unique_in_row[3]{possible_in_first_row & (possible_in_second_row.invert()) & (possible_in_third_row.invert()),
+                                                possible_in_second_row & (possible_in_first_row.invert()) & (possible_in_third_row.invert()),
+                                                possible_in_third_row & (possible_in_second_row.invert()) & (possible_in_first_row.invert())};
+            for (uint8_t row_offset = 0; row_offset != 3; ++row_offset) {
+                for (const auto value: unique_in_row[row_offset].all_entries()) {
+                    for (uint8_t column_to_remove = 0; column_to_remove != 9; ++column_to_remove) {
+                        if (column_to_remove < column || column_to_remove > column + 2) {
+                            if (not remove_if_present(row + row_offset, column_to_remove, value, was_updated)) {
                                 return false;
                             }
                         }
@@ -442,18 +434,18 @@ bool Sudoku::findPointingSets(bool& wasUpdated) {
         }
     }
     for (uint8_t row = 0; row != 9; ++row) {
-        const NumberVector possibleInFirstBlock  = possibleIfFree(row, 0) | possibleIfFree(row, 1) | possibleIfFree(row, 2);
-        const NumberVector possibleInSecondBlock = possibleIfFree(row, 3) | possibleIfFree(row, 4) | possibleIfFree(row, 5);
-        const NumberVector possibleInThirdBlock  = possibleIfFree(row, 6) | possibleIfFree(row, 7) | possibleIfFree(row, 8);
-        const NumberVector uniquePerBlock[3]     = {possibleInFirstBlock & (possibleInSecondBlock.invert()) & (possibleInThirdBlock.invert()),
-                                                possibleInSecondBlock & (possibleInFirstBlock.invert()) & (possibleInThirdBlock.invert()),
-                                                possibleInThirdBlock & (possibleInSecondBlock.invert()) & (possibleInFirstBlock.invert())};
-        for (uint8_t columnBlock = 0; columnBlock != 3; ++columnBlock) {
-            for (const auto value : uniquePerBlock[columnBlock].allEntries()) {
-                for (uint8_t rowToRemove = DIV_THREE_TIMES_THREE[row]; rowToRemove != DIV_THREE_TIMES_THREE[row] + 3; ++rowToRemove) {
-                    if (rowToRemove != row) {
-                        for (uint8_t column = 3 * columnBlock; column != 3 * columnBlock + 3; ++column) {
-                            if (not removeIfPresent(rowToRemove, column, value, wasUpdated)) {
+        const NumberVector possible_in_first_block = possible_if_free(row, 0) | possible_if_free(row, 1) | possible_if_free(row, 2);
+        const NumberVector possible_in_second_block = possible_if_free(row, 3) | possible_if_free(row, 4) | possible_if_free(row, 5);
+        const NumberVector possible_in_third_block = possible_if_free(row, 6) | possible_if_free(row, 7) | possible_if_free(row, 8);
+        const NumberVector unique_per_block[3] = {possible_in_first_block & (possible_in_second_block.invert()) & (possible_in_third_block.invert()),
+                                                  possible_in_second_block & (possible_in_first_block.invert()) & (possible_in_third_block.invert()),
+                                                  possible_in_third_block & (possible_in_second_block.invert()) & (possible_in_first_block.invert())};
+        for (uint8_t column_block = 0; column_block != 3; ++column_block) {
+            for (const auto value: unique_per_block[column_block].all_entries()) {
+                for (uint8_t row_to_remove = g_div_three_times_three[row]; row_to_remove != g_div_three_times_three[row] + 3; ++row_to_remove) {
+                    if (row_to_remove != row) {
+                        for (uint8_t column = 3 * column_block; column != 3 * column_block + 3; ++column) {
+                            if (not remove_if_present(row_to_remove, column, value, was_updated)) {
                                 return false;
                             }
                         }
@@ -464,17 +456,43 @@ bool Sudoku::findPointingSets(bool& wasUpdated) {
     }
     for (uint8_t column = 0; column != 9; column += 3) {
         for (uint8_t row = 0; row != 9; row += 3) {
-            const NumberVector possibleInFirstColumn  = possibleIfFree(row, column) | possibleIfFree(row + 1, column) | possibleIfFree(row + 2, column);
-            const NumberVector possibleInSecondColumn = possibleIfFree(row, column + 1) | possibleIfFree(row + 1, column + 1) | possibleIfFree(row + 2, column + 1);
-            const NumberVector possibleInThirdColumn  = possibleIfFree(row, column + 2) | possibleIfFree(row + 1, column + 2) | possibleIfFree(row + 2, column + 2);
-            const NumberVector onlyInFirstColumn[3]   = {possibleInFirstColumn & (possibleInSecondColumn.invert()) & (possibleInThirdColumn.invert()),
-                                                       possibleInSecondColumn & (possibleInFirstColumn.invert()) & (possibleInThirdColumn.invert()),
-                                                       possibleInThirdColumn & (possibleInSecondColumn.invert()) & (possibleInFirstColumn.invert())};
+            const NumberVector possible_in_first_column =
+                    possible_if_free(row, column) | possible_if_free(row + 1, column) | possible_if_free(row + 2, column);
+            const NumberVector possible_in_second_column =
+                    possible_if_free(row, column + 1) | possible_if_free(row + 1, column + 1) | possible_if_free(row + 2, column + 1);
+            const NumberVector possible_in_third_column =
+                    possible_if_free(row, column + 2) | possible_if_free(row + 1, column + 2) | possible_if_free(row + 2, column + 2);
+            const NumberVector only_in_first_column[3] = {
+                    possible_in_first_column & (possible_in_second_column.invert()) & (possible_in_third_column.invert()),
+                    possible_in_second_column & (possible_in_first_column.invert()) & (possible_in_third_column.invert()),
+                    possible_in_third_column & (possible_in_second_column.invert()) & (possible_in_first_column.invert())};
             for (uint8_t k = 0; k != 3; ++k) {
-                for (uint8_t rowToRemove = 0; rowToRemove != 9; ++rowToRemove) {
-                    if (rowToRemove < row || rowToRemove > row + 2) {
-                        for (const auto inFirst : onlyInFirstColumn[k].allEntries()) {
-                            if (not removeIfPresent(rowToRemove, column + k, inFirst, wasUpdated)) {
+                for (uint8_t row_to_remove = 0; row_to_remove != 9; ++row_to_remove) {
+                    if (row_to_remove < row || row_to_remove > row + 2) {
+                        for (const auto in_first: only_in_first_column[k].all_entries()) {
+                            if (not remove_if_present(row_to_remove, column + k, in_first, was_updated)) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for (uint8_t column = 0; column != 9; ++column) {
+        const NumberVector possible_in_first_block = possible_if_free(0, column) | possible_if_free(1, column) | possible_if_free(2, column);
+        const NumberVector possible_in_second_block = possible_if_free(3, column) | possible_if_free(4, column) | possible_if_free(5, column);
+        const NumberVector possible_in_third_block = possible_if_free(6, column) | possible_if_free(7, column) | possible_if_free(8, column);
+        const NumberVector unique_per_block[3] = {possible_in_first_block & (possible_in_second_block.invert()) & (possible_in_third_block.invert()),
+                                                  possible_in_second_block & (possible_in_first_block.invert()) & (possible_in_third_block.invert()),
+                                                  possible_in_third_block & (possible_in_second_block.invert()) & (possible_in_first_block.invert())};
+        for (uint8_t row_block = 0; row_block != 3; ++row_block) {
+            for (const auto value: unique_per_block[row_block].all_entries()) {
+                for (uint8_t column_to_remove = g_div_three_times_three[column];
+                     column_to_remove != g_div_three_times_three[column] + 3; ++column_to_remove) {
+                    if (column_to_remove != column) {
+                        for (uint8_t row = 3 * row_block; row != 3 * row_block + 3; ++row) {
+                            if (not remove_if_present(row, column_to_remove, value, was_updated)) {
                                 return false;
                             }
                         }
@@ -486,17 +504,17 @@ bool Sudoku::findPointingSets(bool& wasUpdated) {
     return true;
 }
 
-bool Sudoku::removeIfPresent(uint8_t row, uint8_t column, uint8_t value, bool& wasRemoved) {
-    if (isFree(row, column)) {
-        if (m_possibleAtPosition[row][column].contains(value)) {
-            wasRemoved = true;
+bool Sudoku::remove_if_present(uint8_t row, uint8_t column, uint8_t value, bool &was_removed) {
+    if (is_free(row, column)) {
+        if (m_possible_at_position[row][column].contains(value)) {
+            was_removed = true;
         }
-        m_possibleAtPosition[row][column].remove(value);
-        if (m_possibleAtPosition[row][column].count() == 0) {
+        m_possible_at_position[row][column].remove(value);
+        if (m_possible_at_position[row][column].count() == 0) {
             return false;
-        } else if (m_possibleAtPosition[row][column].count() == 1) {
-            const auto forcedValue = m_possibleAtPosition[row][column].smallestNumber();
-            if (not set(row, column, forcedValue)) {
+        } else if (m_possible_at_position[row][column].count() == 1) {
+            const auto forced_value = m_possible_at_position[row][column].smallest_number();
+            if (not set(row, column, forced_value)) {
                 return false;
             }
         }
@@ -504,33 +522,36 @@ bool Sudoku::removeIfPresent(uint8_t row, uint8_t column, uint8_t value, bool& w
     return true;
 }
 
-bool Sudoku::isSolved() const {
+bool Sudoku::is_solved() const {
     for (uint8_t row = 0; row != 9; ++row) {
-        std::set<uint8_t> allInRow;
+        std::set<uint8_t> all_in_row;
         for (uint8_t column = 0; column != 9; ++column) {
-            allInRow.insert(m_rows[row].numberAt(column));
+            all_in_row.insert(number_at(row, column));
         }
-        if (allInRow.size() != 9 || *std::max_element(allInRow.begin(), allInRow.end()) > 9 || *std::min_element(allInRow.begin(), allInRow.end()) == 0) {
+        if (all_in_row.size() != 9 || *std::max_element(all_in_row.begin(), all_in_row.end()) > 9 ||
+            *std::min_element(all_in_row.begin(), all_in_row.end()) == 0) {
             std::cout << "Row error in row " << static_cast<int>(row) << "\n";
             return false;
         }
     }
     for (uint8_t column = 0; column != 9; ++column) {
-        std::set<uint8_t> allInColumn;
+        std::set<uint8_t> all_in_column;
         for (uint8_t row = 0; row != 9; ++row) {
-            allInColumn.insert(m_rows[row].numberAt(column));
+            all_in_column.insert(number_at(row, column));
         }
-        if (allInColumn.size() != 9 || *std::max_element(allInColumn.begin(), allInColumn.end()) > 9 || *std::min_element(allInColumn.begin(), allInColumn.end()) == 0) {
+        if (all_in_column.size() != 9 || *std::max_element(all_in_column.begin(), all_in_column.end()) > 9 ||
+            *std::min_element(all_in_column.begin(), all_in_column.end()) == 0) {
             std::cout << "Column error in column " << static_cast<int>(column) << "\n";
             return false;
         }
     }
     for (uint8_t block = 0; block != 9; ++block) {
-        std::set<uint8_t> allInColumn;
-        for (const auto [row, column] : BLOCK_POSITIONS[block]) {
-            allInColumn.insert(m_rows[row].numberAt(column));
+        std::set<uint8_t> all_in_column;
+        for (const auto[row, column]: g_block_positions[block]) {
+            all_in_column.insert(number_at(row, column));
         }
-        if (allInColumn.size() != 9 || *std::max_element(allInColumn.begin(), allInColumn.end()) > 9 || *std::min_element(allInColumn.begin(), allInColumn.end()) == 0) {
+        if (all_in_column.size() != 9 || *std::max_element(all_in_column.begin(), all_in_column.end()) > 9 ||
+            *std::min_element(all_in_column.begin(), all_in_column.end()) == 0) {
             std::cout << "Block error in block " << static_cast<int>(block) << "\n";
             return false;
         }
@@ -538,18 +559,18 @@ bool Sudoku::isSolved() const {
     return true;
 }
 
-bool Sudoku::isConsistent() const {
+bool Sudoku::is_consistent() const {
     for (uint8_t row = 0; row != 9; ++row) {
         for (uint8_t column = 0; column != 9; ++column) {
-            if (isFree(row, column)) {
-                for (const auto& [r, c] : LINKED[row][column]) {
-                    if (not isFree(r, c) && m_possibleAtPosition[row][column].contains(m_rows[r].numberAt(c))) {
+            if (is_free(row, column)) {
+                for (const auto&[r, c]: g_linked[row][column]) {
+                    if (not is_free(r, c) && m_possible_at_position[row][column].contains(m_rows[r].number_at(c))) {
                         return false;
                     }
                 }
             } else {
-                for (const auto& [r, c] : LINKED[row][column]) {
-                    if (not isFree(r, c) && m_rows[r].numberAt(c) == m_rows[row].numberAt(column)) {
+                for (const auto&[r, c]: g_linked[row][column]) {
+                    if (not is_free(r, c) && m_rows[r].number_at(c) == number_at(row, column)) {
                         return false;
                     }
                 }
@@ -567,21 +588,33 @@ static size_t square(size_t a) {
     return a * a * a;
 }
 
-float Sudoku::getReductionScore(uint8_t row, uint8_t column) const {
-    assert(isFree(row, column));
+float Sudoku::get_reduction_score(uint8_t row, uint8_t column) const {
+    assert(is_free(row, column));
     size_t result = 0;
-    for (const auto value : m_possibleAtPosition[row][column].allEntries()) {
-        result += square(getMinimumBranchingAfterSetting(row, column, value));
+    for (const auto value: m_possible_at_position[row][column].all_entries()) {
+        result += square(get_minimum_branching_after_setting(row, column, value));
     }
-    return static_cast<float>(result) / static_cast<float>(m_possibleAtPosition[row][column].count());
+    return static_cast<float>(result) / static_cast<float>(m_possible_at_position[row][column].count());
 }
 
-uint8_t Sudoku::getMinimumBranchingAfterSetting(uint8_t row, uint8_t column, uint8_t value) const {
-    size_t minimumBranch = std::numeric_limits<size_t>::max();
-    for (const auto& [r, c] : LINKED[row][column]) {
-        if (isFree(r, c)) {
-            minimumBranch = min(minimumBranch, m_possibleAtPosition[r][c].count() - m_possibleAtPosition[r][c].contains(value));
+uint8_t Sudoku::get_minimum_branching_after_setting(uint8_t row, uint8_t column, uint8_t value) const {
+    size_t minimum_branch = std::numeric_limits<size_t>::max();
+    for (const auto&[r, c]: g_linked[row][column]) {
+        if (is_free(r, c)) {
+            minimum_branch = min(minimum_branch, m_possible_at_position[r][c].count() - m_possible_at_position[r][c].contains(value));
         }
     }
-    return minimumBranch;
+    return minimum_branch;
+}
+
+uint8_t Sudoku::number_at(uint8_t row, uint8_t column) const {
+    return m_rows[row].number_at(column);
+}
+
+bool Sudoku::has_possibilities(uint8_t row, uint8_t column) {
+    return not m_possible_at_position[row][column].is_empty();
+}
+
+std::shared_ptr<Sudoku> Sudoku::solution() const {
+    return m_solution;
 }
