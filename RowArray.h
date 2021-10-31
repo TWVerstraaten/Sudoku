@@ -10,7 +10,6 @@
 class RowArray {
   public:
     RowArray() = default;
-
     explicit RowArray(const std::string& string);
 
     void                  set(uint8_t column, uint8_t value);

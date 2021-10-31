@@ -13,7 +13,6 @@ class Row {
 
   public:
     Row() = default;
-
     explicit Row(const std::string& string);
 
     void                         set(size_t column, size_t value);

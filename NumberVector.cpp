@@ -12,6 +12,9 @@
 #include <sstream>
 #include <vector>
 
+NumberVector::NumberVector(uint16_t value) : m_number_bits(value) {
+}
+
 const NumberVector& NumberVector::operator|=(const NumberVector& other) {
     m_number_bits |= other.m_number_bits;
     return *this;
@@ -23,14 +26,12 @@ const NumberVector& NumberVector::operator&=(const NumberVector& other) {
 }
 
 NumberVector NumberVector::invert() const {
-    NumberVector result;
-    result.m_number_bits |= (~m_number_bits) & 0x3ff;
-    return result;
+    return g_inverted[m_number_bits];
 }
 
 void NumberVector::add(uint8_t number) {
     assert(number <= 9);
-    m_number_bits = m_number_bits | g_add_mask[number];
+    m_number_bits |= g_add_mask[number];
 }
 
 void NumberVector::remove(uint8_t number) {
@@ -85,13 +86,6 @@ const std::vector<uint8_t>& NumberVector::all_entries() const {
 bool NumberVector::is_empty() const {
     return g_count_present[m_number_bits] == 0;
 }
-
 bool operator==(const NumberVector& lhs, const NumberVector& rhs) {
     return lhs.m_number_bits == rhs.m_number_bits;
-}
-
-NumberVector NumberVector::singleton(uint8_t single_value) {
-    NumberVector result = NumberVector{};
-    result.add(single_value);
-    return result;
 }
